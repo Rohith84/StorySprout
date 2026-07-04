@@ -1,0 +1,306 @@
+"use client";
+
+import * as React from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import Link from "next/link";
+import { Search, Filter, Star, Trash2, Copy, BookOpen, Plus, X, SlidersHorizontal, Heart } from "lucide-react";
+import { GlassCard, StoryCard } from "@/components/ui/sprout-cards";
+import { SproutButton } from "@/components/ui/sprout-button";
+import { SearchInput } from "@/components/ui/sprout-inputs";
+import { SproutBadge } from "@/components/ui/sprout-misc";
+import { StoryCardSkeleton } from "@/components/ui/sprout-loading";
+
+const allStories = [
+  { id: "1", title: "The Enchanted Forest",      emoji: "🌲", gradient: "forest" as const, pages: 24, rating: 4.9, age: "4–7",  genre: "Fantasy",   isFavorite: false, isNew: true,  createdAt: "2 days ago"  },
+  { id: "2", title: "Luna and the Moon Rabbits", emoji: "🌙", gradient: "sky"    as const, pages: 18, rating: 4.8, age: "5–8",  genre: "Adventure", isFavorite: true,  isNew: false, createdAt: "3 days ago"  },
+  { id: "3", title: "Captain Pip's Treasure",   emoji: "🏴‍☠️", gradient: "sunset" as const, pages: 32, rating: 4.7, age: "6–9",  genre: "Adventure", isFavorite: true,  isNew: false, createdAt: "1 week ago"  },
+  { id: "4", title: "Zara and the Rainbow Seed",emoji: "🌈", gradient: "mint"   as const, pages: 20, rating: 4.9, age: "3–6",  genre: "Fantasy",   isFavorite: false, isNew: true,  createdAt: "1 day ago"   },
+  { id: "5", title: "The Tiny Dragon's Dream",  emoji: "🐉", gradient: "magic"  as const, pages: 28, rating: 4.6, age: "5–8",  genre: "Fantasy",   isFavorite: false, isNew: false, createdAt: "5 days ago"  },
+  { id: "6", title: "Benny Builds a Rocket",    emoji: "🚀", gradient: "sky"    as const, pages: 22, rating: 4.8, age: "6–9",  genre: "Science",   isFavorite: true,  isNew: false, createdAt: "1 week ago"  },
+  { id: "7", title: "The Starship Twins",        emoji: "⭐", gradient: "sky"    as const, pages: 26, rating: 4.7, age: "6–9",  genre: "Science",   isFavorite: false, isNew: false, createdAt: "2 weeks ago" },
+  { id: "8", title: "Mochi's Forest Walk",       emoji: "🦔", gradient: "forest" as const, pages: 16, rating: 4.9, age: "3–6",  genre: "Nature",    isFavorite: true,  isNew: false, createdAt: "3 days ago"  },
+  { id: "9", title: "The Friendship Bridge",     emoji: "🌸", gradient: "sunset" as const, pages: 18, rating: 4.8, age: "4–7",  genre: "Friendship",isFavorite: false, isNew: true,  createdAt: "4 hours ago" },
+];
+
+const ageFilters = ["All Ages", "3–5", "6–8", "9–12"];
+const genreFilters = ["All", "Fantasy", "Adventure", "Science", "Nature", "Friendship"];
+const sortOptions = ["Recently Created", "Highest Rated", "Most Pages", "A–Z"];
+
+export default function LibraryPage() {
+  const [search, setSearch] = React.useState("");
+  const [ageFilter, setAgeFilter] = React.useState("All Ages");
+  const [genreFilter, setGenreFilter] = React.useState("All");
+  const [sortBy, setSortBy] = React.useState("Recently Created");
+  const [showFavoritesOnly, setShowFavoritesOnly] = React.useState(false);
+  const [stories, setStories] = React.useState(allStories);
+  const [loading, setLoading] = React.useState(false);
+  const [showFilters, setShowFilters] = React.useState(false);
+  const [deleteTarget, setDeleteTarget] = React.useState<string | null>(null);
+
+  const filtered = React.useMemo(() => {
+    return stories.filter((s) => {
+      const matchSearch = !search || s.title.toLowerCase().includes(search.toLowerCase()) || s.genre.toLowerCase().includes(search.toLowerCase());
+      const matchAge = ageFilter === "All Ages" || s.age === ageFilter;
+      const matchGenre = genreFilter === "All" || s.genre === genreFilter;
+      const matchFav = !showFavoritesOnly || s.isFavorite;
+      return matchSearch && matchAge && matchGenre && matchFav;
+    });
+  }, [stories, search, ageFilter, genreFilter, showFavoritesOnly]);
+
+  function handleDelete(id: string) {
+    setStories((prev) => prev.filter((s) => s.id !== id));
+    setDeleteTarget(null);
+  }
+
+  function handleDuplicate(id: string) {
+    const story = stories.find((s) => s.id === id);
+    if (!story) return;
+    const copy = { ...story, id: Date.now().toString(), title: `${story.title} (Copy)`, isNew: true, createdAt: "Just now" };
+    setStories((prev) => [copy, ...prev]);
+  }
+
+  function toggleFavorite(id: string) {
+    setStories((prev) => prev.map((s) => s.id === id ? { ...s, isFavorite: !s.isFavorite } : s));
+  }
+
+  return (
+    <div className="min-h-screen gradient-page">
+      {/* Header */}
+      <div className="sticky top-0 z-20 glass border-b border-border/40 px-4 py-3">
+        <div className="max-w-6xl mx-auto flex items-center gap-3">
+          <div>
+            <h1 className="font-heading font-bold text-lg">📚 My Library</h1>
+            <p className="text-xs text-muted-foreground font-body">{stories.length} stories · {stories.filter((s) => s.isFavorite).length} favourites</p>
+          </div>
+          <div className="flex-1 max-w-sm ml-4">
+            <SearchInput
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              onClear={() => setSearch("")}
+              clearable
+              placeholder="Search stories or genres…"
+            />
+          </div>
+          <div className="flex items-center gap-2 ml-auto">
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setShowFilters((f) => !f)}
+              className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-heading font-semibold transition-colors ${showFilters ? "bg-primary text-primary-foreground" : "glass hover:bg-white/80 dark:hover:bg-white/10"}`}
+            >
+              <SlidersHorizontal size={16} />
+              <span className="hidden sm:inline">Filters</span>
+            </motion.button>
+            <Link href="/create">
+              <SproutButton variant="primary" size="sm" leftIcon={<Plus size={14} />}>New Story</SproutButton>
+            </Link>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-6xl mx-auto px-4 py-6 space-y-5">
+        {/* Filters panel */}
+        <AnimatePresence>
+          {showFilters && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="overflow-hidden"
+            >
+              <GlassCard padding="md" hover={false} className="space-y-4">
+                <div className="flex flex-wrap gap-4">
+                  {/* Age filter */}
+                  <div className="space-y-2">
+                    <p className="text-xs font-heading font-bold text-muted-foreground uppercase tracking-wide">Age Range</p>
+                    <div className="flex flex-wrap gap-2">
+                      {ageFilters.map((a) => (
+                        <button
+                          key={a}
+                          onClick={() => setAgeFilter(a)}
+                          className={`px-3 py-1.5 rounded-full text-xs font-heading font-semibold transition-all border ${ageFilter === a ? "bg-primary text-primary-foreground border-primary" : "border-border hover:border-primary/40"}`}
+                        >
+                          {a}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  {/* Genre filter */}
+                  <div className="space-y-2">
+                    <p className="text-xs font-heading font-bold text-muted-foreground uppercase tracking-wide">Genre</p>
+                    <div className="flex flex-wrap gap-2">
+                      {genreFilters.map((g) => (
+                        <button
+                          key={g}
+                          onClick={() => setGenreFilter(g)}
+                          className={`px-3 py-1.5 rounded-full text-xs font-heading font-semibold transition-all border ${genreFilter === g ? "bg-[#BFA7FF] text-[#2a1a4b] border-[#BFA7FF]" : "border-border hover:border-[#BFA7FF]/40"}`}
+                        >
+                          {g}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  {/* Sort */}
+                  <div className="space-y-2">
+                    <p className="text-xs font-heading font-bold text-muted-foreground uppercase tracking-wide">Sort By</p>
+                    <select
+                      value={sortBy}
+                      onChange={(e) => setSortBy(e.target.value)}
+                      className="h-8 px-3 rounded-xl border border-border bg-background/60 font-body text-xs focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    >
+                      {sortOptions.map((o) => <option key={o}>{o}</option>)}
+                    </select>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => setShowFavoritesOnly((f) => !f)}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-heading font-semibold transition-all border ${showFavoritesOnly ? "bg-[#FFE66D] text-[#3b3000] border-[#FFE66D]" : "border-border hover:border-[#FFE66D]/60"}`}
+                  >
+                    <Star size={14} className={showFavoritesOnly ? "fill-[#3b3000]" : ""} />
+                    Favourites Only
+                  </button>
+                  <button
+                    onClick={() => { setSearch(""); setAgeFilter("All Ages"); setGenreFilter("All"); setSortBy("Recently Created"); setShowFavoritesOnly(false); }}
+                    className="text-xs text-muted-foreground hover:text-foreground transition-colors font-body flex items-center gap-1"
+                  >
+                    <X size={12} /> Clear all filters
+                  </button>
+                </div>
+              </GlassCard>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Quick tabs */}
+        <div className="flex gap-3 flex-wrap">
+          <SproutBadge variant={!showFavoritesOnly ? "solid" : "outline"} className="cursor-pointer text-sm px-3 py-1" onClick={() => setShowFavoritesOnly(false)}>
+            All Stories ({stories.length})
+          </SproutBadge>
+          <SproutBadge variant={showFavoritesOnly ? "solid" : "outline"} className="cursor-pointer text-sm px-3 py-1" onClick={() => setShowFavoritesOnly(true)}>
+            ⭐ Favourites ({stories.filter((s) => s.isFavorite).length})
+          </SproutBadge>
+          <SproutBadge variant="new" className="cursor-pointer text-sm px-3 py-1">
+            🕒 Recently Created
+          </SproutBadge>
+        </div>
+
+        {/* Results count */}
+        {(search || ageFilter !== "All Ages" || genreFilter !== "All" || showFavoritesOnly) && (
+          <p className="text-sm text-muted-foreground font-body">
+            Showing <strong className="text-foreground">{filtered.length}</strong> stories
+          </p>
+        )}
+
+        {/* Story Grid */}
+        {loading ? (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+            {Array.from({ length: 10 }).map((_, i) => <StoryCardSkeleton key={i} />)}
+          </div>
+        ) : filtered.length === 0 ? (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-20 space-y-3">
+            <div className="text-6xl">😕</div>
+            <h3 className="font-heading font-bold text-xl">No stories found</h3>
+            <p className="text-muted-foreground font-body text-sm">Try a different search or filter</p>
+            <Link href="/create">
+              <SproutButton variant="primary" size="md" leftIcon={<Plus size={16} />}>Create a Story</SproutButton>
+            </Link>
+          </motion.div>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+            {filtered.map((story, i) => (
+              <motion.div
+                key={story.id}
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                transition={{ delay: i * 0.05 }}
+                className="relative group"
+              >
+                <StoryCard
+                  title={story.title}
+                  coverEmoji={story.emoji}
+                  coverGradient={story.gradient}
+                  pages={story.pages}
+                  rating={story.rating}
+                  ageRange={story.age}
+                  isNew={story.isNew}
+                  isFavorite={story.isFavorite}
+                  onClick={() => window.location.href = `/reader/${story.id}`}
+                />
+                {/* Action buttons overlay */}
+                <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <motion.button
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={(e) => { e.stopPropagation(); toggleFavorite(story.id); }}
+                    className="p-1.5 rounded-xl bg-background/80 backdrop-blur-sm shadow-sm hover:bg-background transition-colors"
+                    aria-label={story.isFavorite ? "Remove from favourites" : "Add to favourites"}
+                  >
+                    <Heart size={14} className={story.isFavorite ? "fill-[#BFA7FF] stroke-[#BFA7FF]" : "stroke-muted-foreground"} />
+                  </motion.button>
+                  <motion.button
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={(e) => { e.stopPropagation(); handleDuplicate(story.id); }}
+                    className="p-1.5 rounded-xl bg-background/80 backdrop-blur-sm shadow-sm hover:bg-background transition-colors"
+                    aria-label="Duplicate story"
+                  >
+                    <Copy size={14} className="stroke-muted-foreground" />
+                  </motion.button>
+                  <motion.button
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={(e) => { e.stopPropagation(); setDeleteTarget(story.id); }}
+                    className="p-1.5 rounded-xl bg-background/80 backdrop-blur-sm shadow-sm hover:bg-destructive/20 transition-colors"
+                    aria-label="Delete story"
+                  >
+                    <Trash2 size={14} className="stroke-muted-foreground" />
+                  </motion.button>
+                </div>
+                {/* Created time */}
+                <p className="text-[10px] text-muted-foreground font-body text-center mt-1">{story.createdAt}</p>
+              </motion.div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Delete confirmation dialog */}
+      <AnimatePresence>
+        {deleteTarget && (
+          <motion.div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              initial={{ scale: 0.85, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.85, opacity: 0 }}
+              className="glass-strong rounded-3xl p-6 max-w-xs w-full text-center space-y-4 shadow-2xl"
+            >
+              <div className="text-5xl">🗑️</div>
+              <h3 className="font-heading font-bold text-xl">Delete this story?</h3>
+              <p className="text-sm text-muted-foreground font-body">This action cannot be undone.</p>
+              <div className="flex gap-3">
+                <SproutButton variant="ghost" size="md" className="flex-1" onClick={() => setDeleteTarget(null)}>Cancel</SproutButton>
+                <SproutButton variant="destructive" size="md" className="flex-1" onClick={() => handleDelete(deleteTarget)}>Delete</SproutButton>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* FAB */}
+      <Link href="/create" className="fixed bottom-20 right-6 lg:bottom-8 lg:right-8 z-40">
+        <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.95 }}>
+          <SproutButton variant="primary" size="icon" className="w-14 h-14 rounded-full shadow-xl" aria-label="Create new story">
+            <Plus size={24} />
+          </SproutButton>
+        </motion.div>
+      </Link>
+    </div>
+  );
+}
