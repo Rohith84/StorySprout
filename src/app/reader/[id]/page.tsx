@@ -5,50 +5,93 @@ import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import {
   ChevronLeft, ChevronRight, Bookmark, Maximize2, ZoomIn, ZoomOut,
-  Volume2, Moon, Sun, Share2, Download, X
+  Volume2, Moon, Sun, Download,
 } from "lucide-react";
 import { SproutButton } from "@/components/ui/sprout-button";
 import { SproutBadge } from "@/components/ui/sprout-misc";
+import type { StoryResponse } from "@/lib/auth-types";
+import { STORY_SESSION_KEY } from "@/lib/auth-types";
 
-const pages = [
+// Page-gradient palette cycles for visual variety
+const GRADIENTS = [
+  "linear-gradient(135deg, #B9FBC0 0%, #6CC6FF 100%)",
+  "linear-gradient(135deg, #FFD8A8 0%, #FFE66D 100%)",
+  "linear-gradient(135deg, #6CC6FF 0%, #BFA7FF 100%)",
+  "linear-gradient(135deg, #BFA7FF 0%, #FFD8A8 100%)",
+  "linear-gradient(135deg, #B9FBC0 0%, #BFA7FF 100%)",
+];
+const ILLUSTRATIONS = ["📖", "🌟", "✨", "🎨", "🌈", "🦋", "🌙", "⭐", "🌿", "🪄"];
+
+// Fallback sample story shown when no session data is available
+const SAMPLE_PAGES = [
   {
     pageNum: 1,
     illustration: "🌲",
-    gradient: "linear-gradient(135deg, #B9FBC0 0%, #6CC6FF 100%)",
+    gradient: GRADIENTS[0],
     text: "Once upon a time, in a forest where the trees sang lullabies and the rivers whispered secrets, a tiny fox named Ember discovered a glowing door hidden beneath the oldest oak tree.",
-    title: "The Enchanted Forest"
+    title: "The Enchanted Forest",
   },
   {
     pageNum: 2,
     illustration: "🦊",
-    gradient: "linear-gradient(135deg, #FFD8A8 0%, #FFE66D 100%)",
+    gradient: GRADIENTS[1],
     text: "\"What could be behind this door?\" Ember wondered, her bushy tail wagging with excitement. She pressed her tiny paw against the warm wood, and with a soft creak, the door swung open.",
-    title: "The Discovery"
+    title: "The Discovery",
   },
   {
     pageNum: 3,
     illustration: "✨",
-    gradient: "linear-gradient(135deg, #6CC6FF 0%, #BFA7FF 100%)",
+    gradient: GRADIENTS[2],
     text: "Beyond the door was a world made entirely of starlight. Crystal trees sparkled like diamonds, and tiny fireflies danced in patterns that told ancient stories of the forest.",
-    title: "A Starlight World"
+    title: "A Starlight World",
   },
   {
     pageNum: 4,
     illustration: "🌟",
-    gradient: "linear-gradient(135deg, #BFA7FF 0%, #FFD8A8 100%)",
+    gradient: GRADIENTS[3],
     text: "A wise old owl greeted Ember with a warm smile. \"Welcome, little one. You've been chosen to hear the oldest story of all – the story of how the stars first learned to shine.\"",
-    title: "The Wise Owl"
+    title: "The Wise Owl",
   },
   {
     pageNum: 5,
     illustration: "🌙",
-    gradient: "linear-gradient(135deg, #B9FBC0 0%, #BFA7FF 100%)",
+    gradient: GRADIENTS[4],
     text: "As the owl told his tale, the night sky filled with dancing lights. Ember listened with wide eyes and an even wider heart, knowing she would carry this story home to share with all her forest friends.",
-    title: "The End"
+    title: "The End",
   },
 ];
 
+function useStoryPages() {
+  const [pages, setPages] = React.useState(SAMPLE_PAGES);
+  const [storyTitle, setStoryTitle] = React.useState("My Story");
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    const raw = sessionStorage.getItem(STORY_SESSION_KEY);
+    if (!raw) return;
+    try {
+      const story = JSON.parse(raw) as StoryResponse;
+      if (!story.pages?.length) return;
+      setStoryTitle(story.title);
+      setPages(
+        story.pages.map((p, i) => ({
+          pageNum: p.pageNumber,
+          illustration: ILLUSTRATIONS[i % ILLUSTRATIONS.length],
+          gradient: GRADIENTS[i % GRADIENTS.length],
+          text: p.text,
+          title: i === story.pages.length - 1 ? "The End" : story.title,
+        }))
+      );
+    } catch {
+      // malformed JSON — keep sample
+    }
+  }, []);
+
+  return { pages, storyTitle };
+}
+
 export default function ReaderPage() {
+  const { pages, storyTitle } = useStoryPages();
   const [current, setCurrent] = React.useState(0);
   const [bookmarked, setBookmarked] = React.useState<Set<number>>(new Set());
   const [zoom, setZoom] = React.useState(1);
@@ -79,6 +122,9 @@ export default function ReaderPage() {
     exit:   (d: number) => ({ x: d > 0 ? -300 : 300, opacity: 0, rotateY: d > 0 ? -15 : 15 }),
   };
 
+  // suppress unused variable warning — fullscreen toggle is a UI affordance
+  void fullscreen;
+
   return (
     <div className={`min-h-screen flex flex-col transition-colors duration-300 ${darkMode ? "bg-[#0a0e1a] text-white" : "gradient-page"}`}>
       {/* Header / Toolbar */}
@@ -90,7 +136,7 @@ export default function ReaderPage() {
             </button>
           </Link>
           <div className="hidden sm:block">
-            <p className="font-heading font-bold text-sm leading-none">{page.title}</p>
+            <p className="font-heading font-bold text-sm leading-none">{storyTitle}</p>
             <p className={`text-xs font-body ${darkMode ? "text-white/50" : "text-muted-foreground"}`}>Page {current + 1} of {pages.length}</p>
           </div>
         </div>
@@ -203,7 +249,7 @@ export default function ReaderPage() {
                     </motion.div>
                   )}
 
-                  {/* Page turn hints */}
+                  {/* Narrating indicator */}
                   {narrating && (
                     <div className="absolute bottom-4 left-0 right-0 flex justify-center">
                       <motion.div

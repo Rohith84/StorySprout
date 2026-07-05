@@ -7,8 +7,22 @@ import { ChevronLeft, ChevronRight, Volume2, RotateCcw } from "lucide-react";
 import { GlassCard } from "@/components/ui/sprout-cards";
 import { SproutButton } from "@/components/ui/sprout-button";
 import { SproutBadge } from "@/components/ui/sprout-misc";
+import type { StoryResponse } from "@/lib/auth-types";
+import { STORY_SESSION_KEY } from "@/lib/auth-types";
 
-const vocabulary = [
+const WORD_EMOJIS = ["✨", "🎵", "🌳", "🌊", "💎", "🦊", "⭐", "🌈"];
+const WORD_COLORS = ["#6CC6FF", "#BFA7FF", "#B9FBC0", "#FFD8A8", "#FFE66D", "#6CC6FF", "#BFA7FF", "#B9FBC0"];
+
+type VocabCard = {
+  word: string;
+  pronunciation: string;
+  meaning: string;
+  example: string;
+  emoji: string;
+  color: string;
+};
+
+const SAMPLE_VOCABULARY: VocabCard[] = [
   {
     word: "Enchanted",
     pronunciation: "en-CHANT-ed",
@@ -59,7 +73,36 @@ const vocabulary = [
   },
 ];
 
+function useVocabulary(): VocabCard[] {
+  const [vocabulary, setVocabulary] = React.useState<VocabCard[]>(SAMPLE_VOCABULARY);
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    const raw = sessionStorage.getItem(STORY_SESSION_KEY);
+    if (!raw) return;
+    try {
+      const story = JSON.parse(raw) as StoryResponse;
+      if (!story.vocabulary?.length) return;
+      setVocabulary(
+        story.vocabulary.map((v, i) => ({
+          word: v.word,
+          pronunciation: v.word.toUpperCase().split("").join("-"),  // simple placeholder
+          meaning: v.meaning,
+          example: `"${v.word}" — ${v.meaning}`,
+          emoji: WORD_EMOJIS[i % WORD_EMOJIS.length],
+          color: WORD_COLORS[i % WORD_COLORS.length],
+        }))
+      );
+    } catch {
+      // malformed JSON — keep sample
+    }
+  }, []);
+
+  return vocabulary;
+}
+
 export default function VocabularyPage() {
+  const vocabulary = useVocabulary();
   const [current, setCurrent] = React.useState(0);
   const [flipped, setFlipped] = React.useState(false);
   const [learned, setLearned] = React.useState<Set<number>>(new Set());

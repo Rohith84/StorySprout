@@ -1,14 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import type { StoryPayload } from "@/lib/auth-types";
+
+const FASTAPI_URL = process.env.FASTAPI_URL ?? "http://localhost:8000";
 
 /**
  * POST /api/generate-story
  *
- * Placeholder endpoint — echoes the received JSON so the wizard
- * data capture can be verified before the FastAPI backend is wired up.
- *
- * In production, replace the body of this function with:
- *   const result = await fetch(`${FASTAPI_URL}/generate-story`, { method:"POST", body, ... });
+ * Forwards the wizard payload to the FastAPI backend at FASTAPI_URL/generate-story
+ * and streams the story JSON back to the frontend.
  */
 export async function POST(request: NextRequest) {
   let body: unknown;
@@ -22,32 +20,21 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Basic shape validation
-  const payload = body as Partial<StoryPayload>;
-  const required: (keyof StoryPayload)[] = [
-    "heroType", "incident", "lesson", "moral", "theme",
-    "storyType", "length", "artStyle",
-  ];
-
-  const missing = required.filter((k) => !payload[k]);
-  if (missing.length > 0) {
-    return NextResponse.json(
-      { error: `Missing required fields: ${missing.join(", ")}` },
-      { status: 422 }
-    );
+  let fastapiRes: Response;
+  try {
+    fastapiRes = await fetch(`${FASTAPI_URL}/generate-story`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Could not reach story generation service.";
+    return NextResponse.json({ error: message }, { status: 502 });
   }
 
-  // Echo back exactly what was received so the frontend can confirm
-  // every field was captured correctly.
-  return NextResponse.json(
-    {
-      received: payload,
-      status: "ok",
-      message: "Payload captured successfully. Story generation will begin here.",
-      _note: "This is a placeholder. Connect to FastAPI /generate-story in production.",
-    },
-    { status: 200 }
-  );
+  // Forward whatever status + body FastAPI returned
+  const data = await fastapiRes.json();
+  return NextResponse.json(data, { status: fastapiRes.status });
 }
 
 /** Return 405 for all other methods */

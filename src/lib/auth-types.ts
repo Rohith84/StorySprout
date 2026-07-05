@@ -63,4 +63,36 @@ export interface StoryPayload {
   photoSketch: string | null;
   length: "short" | "medium" | "lengthy";
   artStyle: "sketch" | "color";
+  ageLevel: "3-5" | "6-8" | "9-12";
 }
+
+/** A single page returned by the story generation API. */
+export interface StoryPage {
+  pageNumber: number;
+  text: string;
+  imagePrompt: string;
+}
+
+/** A single quiz question returned by the story generation API. */
+export interface QuizQuestion {
+  question: string;
+  options: [string, string, string, string];
+  answer: string;
+}
+
+/** A single vocabulary item returned by the story generation API. */
+export interface VocabularyItem {
+  word: string;
+  meaning: string;
+}
+
+/** Full story response shape returned by POST /api/generate-story. */
+export interface StoryResponse {
+  title: string;
+  pages: StoryPage[];
+  quiz: QuizQuestion[];
+  vocabulary: VocabularyItem[];
+}
+
+/** sessionStorage key used to pass the generated story between pages. */
+export const STORY_SESSION_KEY = "sprout_current_story";

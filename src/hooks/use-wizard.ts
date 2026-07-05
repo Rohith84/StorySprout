@@ -8,7 +8,9 @@
  */
 
 import * as React from "react";
-import type { StoryPayload } from "@/lib/auth-types";
+import { useRouter } from "next/navigation";
+import type { StoryPayload, StoryResponse } from "@/lib/auth-types";
+import { STORY_SESSION_KEY } from "@/lib/auth-types";
 import { sanitizeInput } from "@/lib/auth-service";
 
 export interface WizardState {
@@ -22,6 +24,7 @@ export interface WizardState {
   photoSketch: string | null;
   length: "short" | "medium" | "lengthy";
   artStyle: "sketch" | "color";
+  ageLevel: "3-5" | "6-8" | "9-12";
 }
 
 const INITIAL: WizardState = {
@@ -35,11 +38,13 @@ const INITIAL: WizardState = {
   photoSketch: null,
   length: "medium",
   artStyle: "color",
+  ageLevel: "6-8",
 };
 
 export const TOTAL_STEPS = 9;
 
 export function useWizard() {
+  const router = useRouter();
   const [step, setStep] = React.useState(1);
   const [state, setState] = React.useState<WizardState>(INITIAL);
   const [submitting, setSubmitting] = React.useState(false);
@@ -75,10 +80,11 @@ export function useWizard() {
       photoSketch: state.photoSketch,                   // already a data URL / null
       length:      state.length,
       artStyle:    state.artStyle,
+      ageLevel:    state.ageLevel,
     };
   }
 
-  /** POST to /api/generate-story placeholder. */
+  /** POST to /api/generate-story, store result in sessionStorage, then navigate to /loading. */
   async function submit(): Promise<void> {
     setSubmitting(true);
     setSubmitError(null);
@@ -89,9 +95,19 @@ export function useWizard() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      if (!res.ok) throw new Error(`Server error: ${res.status}`);
-      const data = await res.json() as StoryPayload;
-      setSubmitted(data);
+      if (!res.ok) {
+        const errBody = await res.json().catch(() => ({}));
+        throw new Error(
+          (errBody as { error?: string }).error ?? `Server error: ${res.status}`
+        );
+      }
+      const story = await res.json() as StoryResponse;
+      // Persist story for reader / quiz / vocabulary pages
+      if (typeof window !== "undefined") {
+        sessionStorage.setItem(STORY_SESSION_KEY, JSON.stringify(story));
+      }
+      setSubmitted(payload);
+      router.push("/loading");
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : "Submission failed. Please try again.");
     } finally {

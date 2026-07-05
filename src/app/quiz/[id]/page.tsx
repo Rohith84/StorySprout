@@ -7,8 +7,19 @@ import { ChevronLeft, CheckCircle2, X, Star, ArrowRight } from "lucide-react";
 import { GlassCard } from "@/components/ui/sprout-cards";
 import { SproutButton } from "@/components/ui/sprout-button";
 import { ProgressBar } from "@/components/ui/sprout-misc";
+import type { StoryResponse } from "@/lib/auth-types";
+import { STORY_SESSION_KEY } from "@/lib/auth-types";
 
-const questions = [
+const QUESTION_EMOJIS = ["🌲", "✨", "🦉", "🌙", "🦊", "⭐", "🌈", "🎨"];
+
+type NormalisedQuestion = {
+  q: string;
+  options: string[];
+  correct: number;
+  emoji: string;
+};
+
+const SAMPLE_QUESTIONS: NormalisedQuestion[] = [
   {
     q: "What did Ember find hidden beneath the oldest oak tree?",
     options: ["A treasure chest", "A glowing door", "A sleeping dragon", "A magic potion"],
@@ -41,6 +52,35 @@ const questions = [
   },
 ];
 
+function useQuizQuestions(): NormalisedQuestion[] {
+  const [questions, setQuestions] = React.useState<NormalisedQuestion[]>(SAMPLE_QUESTIONS);
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    const raw = sessionStorage.getItem(STORY_SESSION_KEY);
+    if (!raw) return;
+    try {
+      const story = JSON.parse(raw) as StoryResponse;
+      if (!story.quiz?.length) return;
+      setQuestions(
+        story.quiz.map((q, i) => {
+          const correctIdx = q.options.indexOf(q.answer);
+          return {
+            q: q.question,
+            options: q.options,
+            correct: correctIdx >= 0 ? correctIdx : 0,
+            emoji: QUESTION_EMOJIS[i % QUESTION_EMOJIS.length],
+          };
+        })
+      );
+    } catch {
+      // malformed JSON — keep sample
+    }
+  }, []);
+
+  return questions;
+}
+
 /* ─── Confetti ────────────────────────────────────────────── */
 function Confetti() {
   const pieces = Array.from({ length: 50 }, (_, i) => ({
@@ -66,6 +106,7 @@ function Confetti() {
 }
 
 export default function QuizPage() {
+  const questions = useQuizQuestions();
   const [current, setCurrent] = React.useState(0);
   const [selected, setSelected] = React.useState<number | null>(null);
   const [answered, setAnswered] = React.useState(false);
