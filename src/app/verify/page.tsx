@@ -255,7 +255,7 @@ export default function VerifyPage() {
       {["🌙", "⭐", "✨", "🌿", "🦋", "🌸", "☁️", "💫"].map((e, i) => (
         <motion.span
           key={i}
-          className="absolute text-xl opacity-20 dark:opacity-10 pointer-events-none select-none"
+          className="absolute text-xl opacity-40 dark:opacity-50 pointer-events-none select-none"
           style={{ left: `${6 + i * 12}%`, top: `${8 + (i % 4) * 22}%` }}
           animate={{ y: [0, -16, 0], rotate: [0, 10, -10, 0] }}
           transition={{ duration: 4 + i * 0.6, repeat: Infinity, delay: i * 0.4, ease: "easeInOut" }}

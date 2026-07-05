@@ -44,7 +44,7 @@ function FloatingParticles() {
       {PARTICLES.map((p, i) => (
         <motion.span
           key={i}
-          className="absolute text-2xl select-none opacity-20 dark:opacity-10"
+          className="absolute text-2xl select-none opacity-40 dark:opacity-50"
           style={{ left: p.x, top: p.y }}
           animate={{ y: [0, -20, 0], rotate: [0, 12, -12, 0], scale: [1, 1.15, 1] }}
           transition={{ duration: p.dur, repeat: Infinity, delay: p.delay, ease: "easeInOut" }}

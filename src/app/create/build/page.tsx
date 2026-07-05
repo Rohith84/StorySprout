@@ -796,7 +796,7 @@ export default function BuildStoryPage() {
       {["✨", "🌟", "📖", "🎨", "⭐"].map((e, i) => (
         <motion.span
           key={i}
-          className="fixed text-2xl opacity-10 dark:opacity-[0.07] pointer-events-none select-none"
+          className="fixed text-2xl opacity-40 dark:opacity-50 pointer-events-none select-none"
           style={{ left: `${6 + i * 18}%`, top: `${6 + (i % 3) * 28}%` }}
           animate={{ y: [0, -16, 0] }}
           transition={{ duration: 5 + i * 0.4, repeat: Infinity, delay: i * 0.5 }}

@@ -3,7 +3,7 @@
 import * as React from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { ArrowRight, Wand2, BookOpen } from "lucide-react";
+import { ArrowRight, Wand2, BookOpen, ChevronLeft } from "lucide-react";
 import { GlassCard } from "@/components/ui/sprout-cards";
 import { SproutBadge } from "@/components/ui/sprout-misc";
 
@@ -45,7 +45,7 @@ export default function CreatePage() {
       {["✨", "⭐", "📖", "🌟", "🎨", "🦋"].map((e, i) => (
         <motion.span
           key={i}
-          className="fixed text-2xl opacity-15 dark:opacity-10 pointer-events-none select-none"
+          className="fixed text-2xl opacity-40 dark:opacity-50 pointer-events-none select-none"
           style={{ left: `${6 + i * 16}%`, top: `${8 + (i % 3) * 28}%` }}
           animate={{ y: [0, -14, 0], rotate: [0, 8, -8, 0] }}
           transition={{ duration: 4.5 + i * 0.5, repeat: Infinity, delay: i * 0.4 }}
@@ -54,6 +54,17 @@ export default function CreatePage() {
           {e}
         </motion.span>
       ))}
+
+      {/* Back to home */}
+      <div className="fixed top-4 left-4 z-20">
+        <Link
+          href="/"
+          className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-body font-medium text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-all"
+        >
+          <ChevronLeft size={16} />
+          Home
+        </Link>
+      </div>
 
       <div className="w-full max-w-3xl relative z-10 space-y-10">
         {/* Header */}

@@ -43,7 +43,7 @@ function Sidebar({ items = defaultNavItems, collapsible = true, className }: Sid
       animate={{ width: collapsed ? 68 : 220 }}
       transition={{ type: "spring", stiffness: 300, damping: 30 }}
       className={cn(
-        "hidden lg:flex flex-col glass border-r border-border/40 h-full shrink-0 overflow-hidden",
+        "hidden lg:flex flex-col glass border-r border-border/40 sticky top-0 h-screen shrink-0 overflow-hidden",
         className
       )}
     >

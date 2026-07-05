@@ -36,7 +36,7 @@ function AppShell({
     <div className={cn("min-h-screen flex flex-col gradient-page", className)}>
       <Header />
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1">
         {showSidebar && <Sidebar />}
 
         <main className="flex-1 flex flex-col overflow-y-auto pb-16 lg:pb-0">

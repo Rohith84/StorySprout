@@ -80,7 +80,7 @@ function FloatingDecorations() {
       {items.map((item, i) => (
         <motion.div
           key={i}
-          className="absolute text-3xl opacity-20 dark:opacity-10"
+          className="absolute text-3xl opacity-40 dark:opacity-50"
           style={{ left: item.x, top: item.y }}
           animate={{ y: [0, -16, 0], rotate: [0, 5, -5, 0] }}
           transition={{ duration: item.dur, repeat: Infinity, delay: item.delay, ease: "easeInOut" }}

@@ -41,7 +41,7 @@ export default function AboutPage() {
       {["🌱","⭐","✨","🌙","🦋"].map((e, i) => (
         <motion.span
           key={i}
-          className="fixed text-3xl opacity-15 dark:opacity-10 pointer-events-none"
+          className="fixed text-3xl opacity-40 dark:opacity-50 pointer-events-none"
           style={{ left: `${5 + i * 22}%`, top: `${5 + (i % 2) * 50}%`, zIndex: 0 }}
           animate={{ y: [0, -14, 0] }}
           transition={{ duration: 5 + i * 0.5, repeat: Infinity, delay: i * 0.5 }}
