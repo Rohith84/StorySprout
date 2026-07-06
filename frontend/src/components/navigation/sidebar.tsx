@@ -6,9 +6,12 @@ import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import {
   BookOpen, Home, Star, Wand2, Library, Settings,
-  ChevronLeft, ChevronRight, X, Download, HelpCircle, LayoutDashboard, Info,
+  ChevronLeft, ChevronRight, X, Download, HelpCircle, LayoutDashboard, Info, LogOut,
 } from "lucide-react";
+import Image from "next/image";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/use-auth";
+import type { AuthUserWithImage } from "@/hooks/use-auth";
 
 export interface NavItem {
   label: string;
@@ -112,6 +115,82 @@ function Sidebar({ items = defaultNavItems, collapsible = true, className }: Sid
   );
 }
 
+/* ─── Mobile drawer user profile footer ──────────────────── */
+function MobileUserProfile({ onClose }: { onClose: () => void }) {
+  const { user, isAuthenticated, status, logout } = useAuth();
+
+  if (status === "loading") {
+    return (
+      <div className="px-4 py-4 border-t border-border/30">
+        <div className="h-10 rounded-2xl bg-muted/60 animate-pulse" />
+      </div>
+    );
+  }
+  if (!isAuthenticated || !user) return null;
+
+  const photoUrl = (user as AuthUserWithImage).image ?? null;
+  const name = user.displayName || user.email;
+  const email = user.email;
+  const initial = name.trim().charAt(0).toUpperCase();
+
+  async function handleSignOut() {
+    onClose();
+    await logout();
+  }
+
+  return (
+    <div className="border-t border-border/30 px-3 py-3 space-y-1">
+      {/* Identity row */}
+      <div className="flex items-center gap-3 px-3 py-2">
+        <span className="relative w-9 h-9 rounded-full overflow-hidden border-2 border-[#6CC6FF]/50 shrink-0 bg-gradient-to-br from-[#6CC6FF] to-[#BFA7FF] flex items-center justify-center text-white text-sm font-heading font-bold">
+          {photoUrl ? (
+            <Image
+              src={photoUrl}
+              alt={name}
+              fill
+              sizes="36px"
+              className="object-cover rounded-full"
+              referrerPolicy="no-referrer"
+            />
+          ) : (
+            <span className="relative z-10 select-none">{initial}</span>
+          )}
+        </span>
+        <div className="min-w-0">
+          <p className="font-heading font-semibold text-sm text-foreground truncate">{name}</p>
+          <p className="text-xs text-muted-foreground truncate">{email}</p>
+        </div>
+      </div>
+
+      {/* Settings link */}
+      <Link
+        href="/settings"
+        onClick={onClose}
+        className={cn(
+          "flex items-center gap-3 px-4 py-3 rounded-2xl transition-all duration-200",
+          "text-sm font-body font-medium text-muted-foreground hover:text-foreground hover:bg-muted/60"
+        )}
+      >
+        <Settings size={18} />
+        <span>Settings</span>
+      </Link>
+
+      {/* Sign out */}
+      <button
+        onClick={handleSignOut}
+        className={cn(
+          "w-full flex items-center gap-3 px-4 py-3 rounded-2xl transition-all duration-200",
+          "text-sm font-body font-medium text-muted-foreground hover:text-red-500 hover:bg-red-500/10"
+        )}
+      >
+        <LogOut size={18} />
+        <span>Sign out</span>
+      </button>
+    </div>
+  );
+}
+
+
 /* ─── Mobile Drawer ───────────────────────────────────────── */
 interface MobileDrawerProps {
   open: boolean;
@@ -157,7 +236,7 @@ function MobileDrawer({ open, onClose, items = defaultNavItems }: MobileDrawerPr
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 py-4 px-3 space-y-1" aria-label="Mobile navigation">
+        <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto" aria-label="Mobile navigation">
           {items.map((item) => {
             const active = pathname === item.href;
             return (
@@ -183,6 +262,9 @@ function MobileDrawer({ open, onClose, items = defaultNavItems }: MobileDrawerPr
             );
           })}
         </nav>
+
+        {/* User profile footer */}
+        <MobileUserProfile onClose={onClose} />
       </motion.div>
     </>
   );

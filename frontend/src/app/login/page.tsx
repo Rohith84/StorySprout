@@ -4,7 +4,6 @@ import * as React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { Shield, ArrowRight, Sparkles, Star, AlertCircle, Loader2 } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { SproutButton } from "@/components/ui/sprout-button";
 import { GlassCard } from "@/components/ui/sprout-cards";
 import { SproutBadge } from "@/components/ui/sprout-misc";
@@ -187,14 +186,13 @@ function GoogleButton({
 
 /* ─── Page ────────────────────────────────────────────────── */
 export default function LoginPage() {
-  const router = useRouter();
   const { status, error, loginWithGoogle } = useAuth();
   const loading = status === "loading";
 
   async function handleGoogle() {
+    // loginWithGoogle() calls NextAuth signIn("google", { callbackUrl: "/verify" }).
+    // NextAuth handles the redirect to Google and back — no manual push needed.
     await loginWithGoogle();
-    // After mock login succeeds, redirect to parent verification
-    router.push("/verify");
   }
 
   return (

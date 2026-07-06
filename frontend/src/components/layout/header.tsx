@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { SearchInput } from "@/components/ui/sprout-inputs";
 import { MobileDrawer } from "@/components/navigation/sidebar";
 import type { NavItem } from "@/components/navigation/sidebar";
+import { UserProfileMenu } from "@/components/ui/user-profile-menu";
 
 interface HeaderProps {
   navItems?: NavItem[];
@@ -118,13 +119,8 @@ function Header({ navItems, showSearch = true, title, className }: HeaderProps) 
               Create
             </Link>
 
-            {/* Avatar */}
-            <button
-              className="w-9 h-9 rounded-full overflow-hidden border-2 border-[#6CC6FF]/50 shrink-0 bg-gradient-to-br from-[#6CC6FF] to-[#BFA7FF] flex items-center justify-center text-white text-sm font-heading font-bold"
-              aria-label="User profile"
-            >
-              S
-            </button>
+            {/* User profile menu */}
+            <UserProfileMenu />
           </div>
         </div>
 
