@@ -27,12 +27,6 @@ const footerLinks = {
   ],
 } as const;
 
-const socials = [
-  { icon: <span className="text-sm font-bold">𝕏</span>,    href: "#", label: "Twitter / X"  },
-  { icon: <span className="text-sm font-bold">IG</span>,   href: "#", label: "Instagram"    },
-  { icon: <span className="text-sm font-bold">▶</span>,    href: "#", label: "YouTube"      },
-];
-
 interface FooterProps {
   className?: string;
   compact?: boolean;
@@ -76,19 +70,6 @@ function Footer({ className, compact = false }: FooterProps) {
             <p className="text-sm text-muted-foreground font-body leading-relaxed max-w-xs">
               Where imagination grows — magical AI-powered stories crafted for every child&apos;s wonder and curiosity.
             </p>
-            {/* Socials */}
-            <div className="flex items-center gap-2">
-              {socials.map((s) => (
-                <a
-                  key={s.label}
-                  href={s.href}
-                  aria-label={s.label}
-                  className="p-2 rounded-xl glass hover:scale-110 text-muted-foreground hover:text-foreground transition-all"
-                >
-                  {s.icon}
-                </a>
-              ))}
-            </div>
             {/* Newsletter */}
             <div className="flex gap-2 max-w-xs">
               <input
