@@ -43,6 +43,7 @@ const AGE_RANGES = [
 const LANGUAGES = [
   { id: "English",    label: "English",    emoji: "🇬🇧" },
   { id: "Hindi",      label: "Hindi",      emoji: "🇮🇳" },
+  { id: "Tamil",      label: "Tamil",      emoji: "🇮🇳" },
   { id: "Spanish",    label: "Spanish",    emoji: "🇪🇸" },
   { id: "French",     label: "French",     emoji: "🇫🇷" },
   { id: "Arabic",     label: "Arabic",     emoji: "🇸🇦" },

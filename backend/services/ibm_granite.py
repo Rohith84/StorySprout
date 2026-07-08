@@ -97,6 +97,18 @@ def _build_prompt(req: StoryRequest, strict: bool = False) -> str:
 
     language = req.language if req.language else "English"
 
+    # Build an explicit language enforcement note for non-English languages
+    # so the model does not silently fall back to English.
+    if language.lower() != "english":
+        language_instruction = (
+            f"Write the entire story in {language}. "
+            f"Every word of the title, all page text, quiz questions, quiz options, "
+            f"quiz answers, vocabulary words, and vocabulary meanings MUST be written "
+            f"in {language} script and language. Do NOT use English anywhere in the story content."
+        )
+    else:
+        language_instruction = f"Write the entire story in {language}."
+
     strict_prefix = (
         "CRITICAL SAFETY REQUIREMENT: A previous draft of this story was flagged as "
         "potentially unsuitable for children. You MUST write a completely different, "
@@ -118,7 +130,7 @@ STORY REQUIREMENTS:
 - Story type / genre: {req.storyType}
 - Art style for image prompts: {req.artStyle}
 - Target age group: {req.ageLevel} years old
-- Story language: Write the entire story in {language}
+- Story language: {language_instruction}
 - Language guidance: {age_instructions}
 - Total pages: {page_count} (each page = one paragraph of story text)
 - The story MUST be 100% child-safe: absolutely no violence, fear, scary content, or inappropriate material.
