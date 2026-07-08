@@ -1,10 +1,10 @@
 "use client";
 
 import * as React from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import Link from "next/link";
 import {
-  Wand2, BookOpen, Sparkles, ArrowRight, Play, ChevronDown,
+  Wand2, BookOpen, Sparkles, ArrowRight, Play,
   Shield
 } from "lucide-react";
 import { AppShell, PageWrapper } from "@/components/layout/app-shell";
@@ -27,14 +27,6 @@ const howItWorks = [
   { step: "02", title: "AI Crafts the Magic", desc: "IBM Granite AI writes your personalised story in seconds.", emoji: "🤖" },
   { step: "03", title: "Illustrations Come Alive", desc: "Computer vision generates beautiful artwork for each page.", emoji: "🎨" },
   { step: "04", title: "Read & Explore", desc: "Enjoy the flipbook reader, quiz, vocabulary cards, and audio narration.", emoji: "📖" },
-];
-
-const faqs = [
-  { q: "Is StorySprout safe for children?", a: "Absolutely. Every story is filtered through our child-safety AI, COPPA-compliant, and reviewed by our moderation team. We never collect personal data from children." },
-  { q: "What ages is StorySprout designed for?", a: "StorySprout creates stories for children aged 3–12. You can select an age range when creating a story to ensure appropriate vocabulary and themes." },
-  { q: "How does the AI story generation work?", a: "We use IBM Granite AI (via IBM watsonx) to generate personalised stories based on your inputs. Our system is fine-tuned specifically for children's literature." },
-  { q: "Can I download stories for offline reading?", a: "Yes! Every story can be downloaded as a beautifully formatted PDF, complete with illustrations. Audio narrations are also available for download." },
-  { q: "How many stories can I create?", a: "Free accounts get 5 stories per month. Premium accounts get unlimited story creation, audio narration, and offline downloads." },
 ];
 
 /* ─── Floating Decorations ────────────────────────────────── */
@@ -261,58 +253,6 @@ function HowItWorksSection() {
   );
 }
 
-/* ─── FAQ ─────────────────────────────────────────────────── */
-function FAQSection() {
-  const [open, setOpen] = React.useState<number | null>(null);
-  return (
-    <section className="py-12" id="faq">
-      <PageWrapper maxWidth="2xl">
-        <div className="text-center mb-12 space-y-2">
-          <SproutBadge variant="sky">Got Questions?</SproutBadge>
-          <h2 className="font-heading font-bold text-3xl md:text-5xl">Frequently Asked ❓</h2>
-        </div>
-        <div className="space-y-3">
-          {faqs.map((faq, i) => (
-            <motion.div
-              key={i}
-              initial={{ opacity: 0, y: 10 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: i * 0.07 }}
-            >
-              <GlassCard hover={false} padding="none">
-                <button
-                  className="w-full flex items-center justify-between p-5 text-left gap-4"
-                  onClick={() => setOpen(open === i ? null : i)}
-                  aria-expanded={open === i}
-                >
-                  <span className="font-heading font-semibold text-sm md:text-base">{faq.q}</span>
-                  <motion.div animate={{ rotate: open === i ? 180 : 0 }} transition={{ duration: 0.2 }} className="shrink-0">
-                    <ChevronDown size={18} className="text-muted-foreground" />
-                  </motion.div>
-                </button>
-                <AnimatePresence>
-                  {open === i && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.25 }}
-                      className="overflow-hidden"
-                    >
-                      <p className="px-5 pb-5 text-sm text-muted-foreground font-body leading-relaxed">{faq.a}</p>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </GlassCard>
-            </motion.div>
-          ))}
-        </div>
-      </PageWrapper>
-    </section>
-  );
-}
-
 /* ─── CTA Section ─────────────────────────────────────────── */
 function CTASection() {
   return (
@@ -365,7 +305,6 @@ export default function HomePage() {
       <HeroSection />
       <HowItWorksSection />
       <FeaturesSection />
-      <FAQSection />
       <CTASection />
     </AppShell>
   );

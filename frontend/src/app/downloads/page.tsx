@@ -3,8 +3,8 @@
 import * as React from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { ChevronLeft, Download, Image as ImageIcon, Volume2, Share2, Copy, CheckCircle2, Sparkles } from "lucide-react";
-import { GlassCard, StatCard } from "@/components/ui/sprout-cards";
+import { ChevronLeft, Download, Share2, Copy, CheckCircle2, Sparkles } from "lucide-react";
+import { GlassCard } from "@/components/ui/sprout-cards";
 import { SproutButton } from "@/components/ui/sprout-button";
 import { SproutBadge } from "@/components/ui/sprout-misc";
 import { useToast, ToastContainer } from "@/components/ui/sprout-misc";
@@ -19,16 +19,6 @@ const downloadItems = [
     size: "2.4 MB",
     badge: "Most Popular",
     badgeVariant: "solid" as const,
-  },
-  {
-    id: "images",
-    title: "Download Images",
-    desc: "All 5 high-resolution illustrations as PNG files",
-    icon: "🖼️",
-    gradient: "linear-gradient(135deg, #FFD8A8, #FFE66D)",
-    size: "8.1 MB",
-    badge: "ZIP Archive",
-    badgeVariant: "sunny" as const,
   },
   {
     id: "audio",
@@ -87,24 +77,6 @@ export default function DownloadsPage() {
       </div>
 
       <div className="max-w-xl mx-auto px-4 py-8 space-y-6">
-        {/* Story preview */}
-        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
-          <GlassCard padding="md" className="flex items-center gap-4">
-            <div className="w-16 h-20 rounded-2xl flex items-center justify-center text-3xl shrink-0 shadow-md"
-              style={{ background: "linear-gradient(135deg, #B9FBC0, #6CC6FF)" }}>
-              🌲
-            </div>
-            <div>
-              <p className="font-heading font-bold text-base">The Enchanted Forest</p>
-              <p className="text-xs text-muted-foreground font-body">5 pages · 6 illustrations · Audio narration included</p>
-              <div className="flex gap-2 mt-2">
-                <SproutBadge variant="sky">Ages 4–7</SproutBadge>
-                <SproutBadge variant="mint">Fantasy</SproutBadge>
-              </div>
-            </div>
-          </GlassCard>
-        </motion.div>
-
         {/* Download options */}
         <div className="space-y-4">
           <h2 className="font-heading font-bold text-xl">📥 Download Options</h2>
@@ -211,19 +183,6 @@ export default function DownloadsPage() {
               ))}
             </div>
           </GlassCard>
-        </motion.div>
-
-        {/* Stats */}
-        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45 }}>
-          <div className="grid grid-cols-3 gap-3">
-            {[
-              { label: "Pages",       value: "5",    icon: "📄", gradient: "sky"    as const },
-              { label: "Illustrations",value: "6",   icon: "🎨", gradient: "sunset" as const },
-              { label: "Audio mins",  value: "8",    icon: "🎧", gradient: "forest" as const },
-            ].map((s) => (
-              <StatCard key={s.label} label={s.label} value={s.value} icon={<span className="text-lg">{s.icon}</span>} gradient={s.gradient} />
-            ))}
-          </div>
         </motion.div>
 
         {/* Back navigation */}

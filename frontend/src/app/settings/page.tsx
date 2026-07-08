@@ -3,7 +3,7 @@
 import * as React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
-import { ChevronLeft, Sun, Moon, Globe, Mic, Gauge, Bell, Trash2, Check, Volume2, ChevronRight } from "lucide-react";
+import { ChevronLeft, Sun, Moon, Trash2, Check, ChevronRight } from "lucide-react";
 import { GlassCard } from "@/components/ui/sprout-cards";
 import { SproutButton } from "@/components/ui/sprout-button";
 import { SproutBadge } from "@/components/ui/sprout-misc";
@@ -45,25 +45,6 @@ function SettingsRow({ icon, title, desc, children }: { icon: React.ReactNode; t
   );
 }
 
-/* ─── Toggle ──────────────────────────────────────────────── */
-function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
-  return (
-    <button
-      role="switch"
-      aria-checked={checked}
-      aria-label={label}
-      onClick={() => onChange(!checked)}
-      className={`relative w-11 h-6 rounded-full transition-colors duration-200 shrink-0 ${checked ? "bg-primary" : "bg-muted"}`}
-    >
-      <motion.div
-        animate={{ x: checked ? 22 : 2 }}
-        transition={{ type: "spring", stiffness: 500, damping: 30 }}
-        className="absolute top-1 w-4 h-4 rounded-full bg-white shadow-sm"
-      />
-    </button>
-  );
-}
-
 /* ─── Settings Section ────────────────────────────────────── */
 function SettingsSection({ title, icon, children }: { title: string; icon: string; children: React.ReactNode }) {
   return (
@@ -87,7 +68,6 @@ export default function SettingsPage() {
   const [lang, setLang] = React.useState("en");
   const [voice, setVoice] = React.useState("friendly");
   const [readingSpeed, setReadingSpeed] = React.useState(50);
-  const [notifications, setNotifications] = React.useState({ streak: true, newStories: true, weekly: false, tips: true });
   const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
 
   React.useEffect(() => setMounted(true), []);
@@ -213,24 +193,6 @@ export default function SettingsPage() {
             />
             <ProgressBar value={readingSpeed} color="#6CC6FF" />
           </div>
-        </SettingsSection>
-
-        {/* Notifications */}
-        <SettingsSection title="Notifications" icon="🔔">
-          {[
-            { key: "streak",     label: "Daily Streak Reminder",    desc: "Get reminded to keep your reading streak",    icon: <span>🔥</span> },
-            { key: "newStories", label: "New Story Alerts",         desc: "Be notified when new stories are available",  icon: <Bell size={18} /> },
-            { key: "weekly",     label: "Weekly Reading Report",    desc: "Receive a summary of your reading progress",  icon: <span>📊</span> },
-            { key: "tips",       label: "Reading Tips & Tricks",    desc: "Get helpful tips for encouraging young readers",icon: <span>💡</span> },
-          ].map((item) => (
-            <SettingsRow key={item.key} icon={item.icon} title={item.label} desc={item.desc}>
-              <Toggle
-                checked={notifications[item.key as keyof typeof notifications]}
-                onChange={(v) => setNotifications((n) => ({ ...n, [item.key]: v }))}
-                label={item.label}
-              />
-            </SettingsRow>
-          ))}
         </SettingsSection>
 
         {/* Account */}
