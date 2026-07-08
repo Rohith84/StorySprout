@@ -100,7 +100,74 @@ export default function ReaderPage() {
   const [direction, setDirection] = React.useState(1);
   const [narrating, setNarrating] = React.useState(false);
 
+  // Keep a ref to the active utterance so we can cancel it at any time
+  const utteranceRef = React.useRef<SpeechSynthesisUtterance | null>(null);
+
   const page = pages[current];
+
+  /** Speak the given text using the Web Speech API */
+  function speak(text: string) {
+    if (typeof window === "undefined" || !window.speechSynthesis) return;
+    // Cancel anything already playing
+    window.speechSynthesis.cancel();
+
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.rate = 0.92;
+    utter.pitch = 1.05;
+    utter.lang = "en-US";
+    // Prefer a natural-sounding voice when available
+    const voices = window.speechSynthesis.getVoices();
+    const preferred = voices.find(
+      (v) =>
+        v.lang.startsWith("en") &&
+        (v.name.includes("Google") || v.name.includes("Samantha") || v.name.includes("Karen"))
+    );
+    if (preferred) utter.voice = preferred;
+
+    utter.onend  = () => setNarrating(false);
+    utter.onerror = () => setNarrating(false);
+
+    utteranceRef.current = utter;
+    window.speechSynthesis.speak(utter);
+    setNarrating(true);
+  }
+
+  /** Stop any active narration */
+  function stopNarration() {
+    if (typeof window !== "undefined" && window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
+    setNarrating(false);
+  }
+
+  /** Toggle narration of the current page */
+  function toggleNarrate() {
+    if (narrating) {
+      stopNarration();
+    } else {
+      speak(page.text);
+    }
+  }
+
+  // When the page changes, restart narration if it was active
+  React.useEffect(() => {
+    if (narrating) {
+      speak(pages[current].text);
+    }
+    // Voices can load asynchronously; attach listener once
+    if (typeof window !== "undefined" && window.speechSynthesis) {
+      window.speechSynthesis.onvoiceschanged = () => {
+        // no-op: voices are fetched fresh inside speak()
+      };
+    }
+    return () => {
+      // Stop speech when component unmounts
+      if (typeof window !== "undefined" && window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [current]);
 
   function goNext() {
     if (current < pages.length - 1) { setDirection(1); setCurrent((c) => c + 1); }
@@ -145,7 +212,7 @@ export default function ReaderPage() {
           {/* Narrate */}
           <motion.button
             whileTap={{ scale: 0.9 }}
-            onClick={() => setNarrating((n) => !n)}
+            onClick={toggleNarrate}
             className={`p-2 rounded-xl transition-colors ${narrating ? "bg-primary text-primary-foreground" : darkMode ? "hover:bg-white/10 text-white/70 hover:text-white" : "hover:bg-muted/60 text-muted-foreground hover:text-foreground"}`}
             aria-label="Narrate page"
             aria-pressed={narrating}

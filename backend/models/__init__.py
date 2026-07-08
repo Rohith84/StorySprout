@@ -13,3 +13,5 @@ class StoryRequest(BaseModel):
     length: Literal["short", "medium", "lengthy"]
     artStyle: str
     ageLevel: Literal["3-5", "6-8", "9-12"]
+    language: Optional[str] = "English"
+    photoSketch: Optional[str] = None

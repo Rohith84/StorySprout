@@ -81,6 +81,7 @@ def _build_prompt(req: StoryRequest) -> str:
         ),
     }[req.ageLevel]
 
+    language = req.language if req.language else "English"
     return f"""You are a professional children's story author. Your task is to write a complete, original, 100% child-safe children's story.
 
 STORY REQUIREMENTS:
@@ -92,6 +93,7 @@ STORY REQUIREMENTS:
 - Story type / genre: {req.storyType}
 - Art style for image prompts: {req.artStyle}
 - Target age group: {req.ageLevel} years old
+- Story language: Write the entire story in {language}
 - Language guidance: {age_instructions}
 - Total pages: {page_count} (each page = one paragraph of story text)
 - The story MUST be 100% child-safe: absolutely no violence, fear, scary content, or inappropriate material.
