@@ -1,11 +1,21 @@
+import logging
 import os
 import json
+
+from fastapi import HTTPException
 from ibm_watsonx_ai import Credentials
 from ibm_watsonx_ai.foundation_models import ModelInference
 from ibm_watsonx_ai.metanames import GenTextParamsMetaNames as GenParams
 
 from models import StoryRequest
+from services.safety_check import check_safety, sanitize_inputs
 
+logger = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# Low-level model helpers
+# ---------------------------------------------------------------------------
 
 def generate_text(prompt: str) -> str:
     credentials = Credentials(
@@ -28,7 +38,11 @@ def generate_text(prompt: str) -> str:
     return response["choices"][0]["message"]["content"]
 
 
-def _build_model(max_tokens: int = 3500) -> ModelInference:
+_LENGTH_TOKENS = {"short": 2500, "medium": 4500, "lengthy": 8000}
+
+
+def _build_model(length: str = "medium") -> ModelInference:
+    max_tokens = _LENGTH_TOKENS.get(length, 4500)
     credentials = Credentials(
         url=os.environ["WATSONX_URL"],
         api_key=os.environ["WATSONX_API_KEY"],
@@ -62,7 +76,7 @@ def _extract_json(raw: str) -> dict:
     return json.loads(raw[start : end + 1])
 
 
-def _build_prompt(req: StoryRequest) -> str:
+def _build_prompt(req: StoryRequest, strict: bool = False) -> str:
     hero_label = req.heroName if req.heroName else f"a {req.heroType}"
     page_count = {"short": 5, "medium": 10, "lengthy": 20}[req.length]
 
@@ -81,7 +95,17 @@ def _build_prompt(req: StoryRequest) -> str:
         ),
     }[req.ageLevel]
 
-    return f"""You are a professional children's story author. Your task is to write a complete, original, 100% child-safe children's story.
+    strict_prefix = (
+        "CRITICAL SAFETY REQUIREMENT: A previous draft of this story was flagged as "
+        "potentially unsuitable for children. You MUST write a completely different, "
+        "gentler, warmer version with absolutely no frightening, violent, dark, or "
+        "uncomfortable content whatsoever. Every sentence must be wholesome, kind, "
+        "and reassuring.\n\n"
+        if strict
+        else ""
+    )
+
+    return f"""{strict_prefix}You are a professional children's story author. Your task is to write a complete, original, 100% child-safe children's story.
 
 STORY REQUIREMENTS:
 - Hero: {hero_label} (hero type: {req.heroType})
@@ -119,20 +143,148 @@ OUTPUT RULES — read carefully:
 Begin the JSON now:"""
 
 
+# ---------------------------------------------------------------------------
+# Input sanitisation — applied once before building the prompt
+# ---------------------------------------------------------------------------
+
+_SANITIZED_FIELDS = (
+    "heroType", "heroName", "incident", "lesson", "moral", "theme",
+    "storyType", "artStyle",
+)
+
+
+def _sanitize_request(req: StoryRequest) -> StoryRequest:
+    """Return a copy of *req* with all free-text fields sanitized."""
+    data = req.model_dump()
+    for field in _SANITIZED_FIELDS:
+        if isinstance(data.get(field), str):
+            original = data[field]
+            cleaned = sanitize_inputs(original)
+            if cleaned != original:
+                logger.info(
+                    "Input sanitized — field=%s | before=%.60r | after=%.60r",
+                    field, original, cleaned,
+                )
+            data[field] = cleaned
+    return type(req)(**data)
+
+
+# ---------------------------------------------------------------------------
+# Safety-check pass over all story pages
+# ---------------------------------------------------------------------------
+
+def _check_pages(story: dict) -> tuple[bool, list[dict]]:
+    """Run check_safety on every page text.
+
+    Returns
+    -------
+    (all_safe, audit_log)
+        ``all_safe`` — True when every page passed.
+        ``audit_log`` — list of dicts recording the verdict for every page
+                        (useful for demo logging / transparency).
+    """
+    pages = story.get("pages", [])
+    audit: list[dict] = []
+    all_safe = True
+
+    for page in pages:
+        page_num = page.get("pageNumber", "?")
+        text = page.get("text", "")
+        result = check_safety(text)
+        safe = result.get("safe", True)
+        entry = {
+            "page": page_num,
+            "safe": safe,
+            **({} if safe else {"reason": result.get("reason")}),
+            **({"warning": result["warning"]} if "warning" in result else {}),
+        }
+        audit.append(entry)
+        logger.info("Safety check — page %s: %s", page_num, entry)
+        if not safe:
+            all_safe = False
+
+    return all_safe, audit
+
+
+# ---------------------------------------------------------------------------
+# Public entry point
+# ---------------------------------------------------------------------------
+
 def generate_story(req: StoryRequest) -> dict:
-    model = _build_model(max_tokens=3500)
-    prompt = _build_prompt(req)
+    # 1. Sanitize free-text wizard inputs
+    req = _sanitize_request(req)
 
-    raw = _call_model(model, prompt)
+    model = _build_model(length=req.length)
 
-    try:
-        return _extract_json(raw)
-    except (ValueError, json.JSONDecodeError):
-        # Retry once with a stricter instruction prepended
-        retry_prompt = (
-            "Your previous response contained text outside the JSON. "
-            "Return ONLY valid JSON — no markdown, no explanation, no extra characters.\n\n"
-            + prompt
-        )
-        raw2 = _call_model(model, retry_prompt)
-        return _extract_json(raw2)
+    def _generate_and_parse(strict: bool = False) -> dict:
+        """Call the model (with optional strict prefix) and parse JSON."""
+        prompt = _build_prompt(req, strict=strict)
+        raw = _call_model(model, prompt)
+        try:
+            return _extract_json(raw)
+        except (ValueError, json.JSONDecodeError):
+            # Retry once on JSON parse failure only
+            retry_prompt = (
+                "Your previous response contained text outside the JSON. "
+                "Return ONLY valid JSON — no markdown, no explanation, no extra characters.\n\n"
+                + prompt
+            )
+            raw2 = _call_model(model, retry_prompt)
+            try:
+                return _extract_json(raw2)
+            except (ValueError, json.JSONDecodeError) as exc:
+                logger.error(
+                    "Both JSON parse attempts failed. raw2 snippet: %.200s | error: %s",
+                    raw2, exc,
+                )
+                raise HTTPException(
+                    status_code=503,
+                    detail={
+                        "error": "generation_failed",
+                        "message": (
+                            "The story couldn't be generated right now — "
+                            "the AI returned an incomplete response. "
+                            "Please try again."
+                        ),
+                    },
+                )
+
+    # 2. First generation attempt
+    story = _generate_and_parse(strict=False)
+
+    # 3. Safety-check every page
+    all_safe, audit = _check_pages(story)
+    story["_safety_audit"] = audit  # attach for demo/logging
+
+    if all_safe:
+        return story
+
+    # 4. One automatic retry with stricter, child-safer instructions
+    logger.warning(
+        "Story failed safety check — regenerating with strict prompt. "
+        "Flagged pages: %s",
+        [e for e in audit if not e["safe"]],
+    )
+    story_retry = _generate_and_parse(strict=True)
+    all_safe_retry, audit_retry = _check_pages(story_retry)
+    story_retry["_safety_audit"] = audit_retry  # overwrite with retry audit
+
+    if all_safe_retry:
+        logger.info("Retry passed safety check.")
+        return story_retry
+
+    # 5. Both attempts failed — return a structured error (never the unsafe story)
+    logger.error(
+        "Story still unsafe after retry. Returning friendly error. "
+        "Retry audit: %s", audit_retry,
+    )
+    return {
+        "_safety_error": True,
+        "message": (
+            "We weren't able to create a story that meets our child-safety "
+            "standards with these inputs. Please try different values for "
+            "the incident, theme, or hero — and we'll create a wonderful "
+            "story for you!"
+        ),
+        "_safety_audit": audit_retry,
+    }
