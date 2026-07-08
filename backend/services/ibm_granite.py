@@ -5,7 +5,7 @@ import json
 from fastapi import HTTPException
 from ibm_watsonx_ai import Credentials
 from ibm_watsonx_ai.foundation_models import ModelInference
-from ibm_watsonx_ai.metanames import GenTextParamsMetaNames as GenParams
+from ibm_watsonx_ai.foundation_models.schema import TextChatParameters
 
 from models import StoryRequest
 from services.safety_check import check_safety, sanitize_inputs
@@ -17,50 +17,51 @@ logger = logging.getLogger(__name__)
 # Low-level model helpers
 # ---------------------------------------------------------------------------
 
-def generate_text(prompt: str) -> str:
-    credentials = Credentials(
+# Map story length → max_tokens for the chat API.
+# Tamil/non-Latin scripts produce more tokens per character, so these
+# values are intentionally generous to avoid mid-JSON truncation.
+_LENGTH_TOKENS = {"short": 3000, "medium": 5000, "lengthy": 9000}
+
+
+def _make_credentials() -> Credentials:
+    return Credentials(
         url=os.environ["WATSONX_URL"],
         api_key=os.environ["WATSONX_API_KEY"],
     )
 
-    model = ModelInference(
-        model_id=os.environ["WATSONX_MODEL_ID"],
-        project_id=os.environ["WATSONX_PROJECT_ID"],
-        credentials=credentials,
-        params={
-            GenParams.MAX_NEW_TOKENS: 2000,
-            GenParams.MIN_NEW_TOKENS: 200,
-        },
-    )
 
-    messages = [{"role": "user", "content": prompt}]
-    response = model.chat(messages=messages)
-    return response["choices"][0]["message"]["content"]
+def _make_model() -> ModelInference:
+    """Return a bare ModelInference instance (no constructor params).
 
-
-_LENGTH_TOKENS = {"short": 2500, "medium": 4500, "lengthy": 8000}
-
-
-def _build_model(length: str = "medium") -> ModelInference:
-    max_tokens = _LENGTH_TOKENS.get(length, 4500)
-    credentials = Credentials(
-        url=os.environ["WATSONX_URL"],
-        api_key=os.environ["WATSONX_API_KEY"],
-    )
+    Params are passed per-call via ``model.chat(params=...)`` using the
+    correct ``TextChatParameters`` schema instead of the generate-only
+    ``GenParams`` names (max_new_tokens / min_new_tokens) which are silently
+    ignored by the chat endpoint.
+    """
     return ModelInference(
         model_id=os.environ["WATSONX_MODEL_ID"],
         project_id=os.environ["WATSONX_PROJECT_ID"],
-        credentials=credentials,
-        params={
-            GenParams.MAX_NEW_TOKENS: max_tokens,
-            GenParams.MIN_NEW_TOKENS: 300,
-        },
+        credentials=_make_credentials(),
     )
 
 
-def _call_model(model: ModelInference, prompt: str) -> str:
+def generate_text(prompt: str) -> str:
+    model = _make_model()
+    chat_params = TextChatParameters(max_tokens=1024)
     messages = [{"role": "user", "content": prompt}]
-    response = model.chat(messages=messages)
+    response = model.chat(messages=messages, params=chat_params)
+    return response["choices"][0]["message"]["content"]
+
+
+def _build_model(length: str = "medium") -> ModelInference:
+    # Kept for compatibility; actual token limit is applied in _call_model.
+    return _make_model()
+
+
+def _call_model(model: ModelInference, prompt: str, max_tokens: int = 5000) -> str:
+    chat_params = TextChatParameters(max_tokens=max_tokens)
+    messages = [{"role": "user", "content": prompt}]
+    response = model.chat(messages=messages, params=chat_params)
     return response["choices"][0]["message"]["content"]
 
 
@@ -104,7 +105,9 @@ def _build_prompt(req: StoryRequest, strict: bool = False) -> str:
             f"Write the entire story in {language}. "
             f"Every word of the title, all page text, quiz questions, quiz options, "
             f"quiz answers, vocabulary words, and vocabulary meanings MUST be written "
-            f"in {language} script and language. Do NOT use English anywhere in the story content."
+            f"in {language} script and language. Do NOT use English anywhere in the story content. "
+            f"IMPORTANT: All JSON string values must be properly escaped. Do NOT include "
+            f"raw newlines, tab characters, or unescaped double-quotes inside JSON string values."
         )
     else:
         language_instruction = f"Write the entire story in {language}."
@@ -135,9 +138,12 @@ STORY REQUIREMENTS:
 - Total pages: {page_count} (each page = one paragraph of story text)
 - The story MUST be 100% child-safe: absolutely no violence, fear, scary content, or inappropriate material.
 
-OUTPUT RULES — read carefully:
-1. Return ONLY a single valid JSON object. No markdown fences, no commentary, no text before or after the JSON.
-2. The JSON must match this exact shape:
+OUTPUT RULES — read carefully and follow exactly:
+1. Return ONLY a single valid JSON object. No markdown fences (no ```), no backticks, no commentary, no text before or after the JSON.
+2. Do NOT add any explanation, preamble, or closing remarks — output must start with {{ and end with }}.
+3. Every string value in the JSON must be a single line with no raw newline characters inside quotes.
+4. Do NOT use double-quote characters (") inside any string value — rephrase to avoid them.
+5. The JSON must match this exact shape:
 {{
   "title": "<story title>",
   "pages": [
@@ -229,22 +235,24 @@ def generate_story(req: StoryRequest) -> dict:
     # 1. Sanitize free-text wizard inputs
     req = _sanitize_request(req)
 
+    max_tokens = _LENGTH_TOKENS.get(req.length, 5000)
     model = _build_model(length=req.length)
 
     def _generate_and_parse(strict: bool = False) -> dict:
         """Call the model (with optional strict prefix) and parse JSON."""
         prompt = _build_prompt(req, strict=strict)
-        raw = _call_model(model, prompt)
+        raw = _call_model(model, prompt, max_tokens=max_tokens)
         try:
             return _extract_json(raw)
         except (ValueError, json.JSONDecodeError):
             # Retry once on JSON parse failure only
             retry_prompt = (
-                "Your previous response contained text outside the JSON. "
-                "Return ONLY valid JSON — no markdown, no explanation, no extra characters.\n\n"
+                "Your previous response was not valid JSON or contained text outside the JSON object. "
+                "Return ONLY the raw JSON object — no markdown fences, no backticks, no explanation, "
+                "no text before or after the opening { and closing }.\n\n"
                 + prompt
             )
-            raw2 = _call_model(model, retry_prompt)
+            raw2 = _call_model(model, retry_prompt, max_tokens=max_tokens)
             try:
                 return _extract_json(raw2)
             except (ValueError, json.JSONDecodeError) as exc:
