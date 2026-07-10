@@ -26,13 +26,31 @@ import {
 } from "@react-pdf/renderer";
 
 // ---------------------------------------------------------------------------
-// Emoji support — register Twemoji as the emoji image source.
-// Must run once at module load time (before any pdf() call).
-// Twemoji renders each emoji as a 72×72 PNG fetched from cdnjs.
+// Font — register Poppins from Google Fonts static CDN, matching the web app.
+// Emoji source — Apple Color Emoji PNGs via jsDelivr (same "3D" glyphs as
+// the browser). Both must run once at module load time before any pdf() call.
 // ---------------------------------------------------------------------------
+Font.register({
+  family: "Poppins",
+  fonts: [
+    {
+      src: "https://fonts.gstatic.com/s/poppins/v22/pxiEyp8kv8JHgFVrFJDUc1NECPY.woff2",
+      fontWeight: 400,
+    },
+    {
+      src: "https://fonts.gstatic.com/s/poppins/v22/pxiByp8kv8JHgFVrLEj6V1tvFP-KUEg.woff2",
+      fontWeight: 600,
+    },
+    {
+      src: "https://fonts.gstatic.com/s/poppins/v22/pxiByp8kv8JHgFVrLCz7V1tvFP-KUEg.woff2",
+      fontWeight: 700,
+    },
+  ],
+});
+
 Font.registerEmojiSource({
-  url: "https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/",
-  format: "png",
+  builder: (code: string) =>
+    `https://cdn.jsdelivr.net/npm/emoji-datasource-apple@15.1.2/img/apple/64/${code}.png`,
 });
 
 // ---------------------------------------------------------------------------
@@ -119,7 +137,7 @@ const S = StyleSheet.create({
     width: "100%",
     height: "100%",
     backgroundColor: BRAND.white,
-    fontFamily: "Helvetica",
+    fontFamily: "Poppins",
   },
 
   // Cover
@@ -143,7 +161,8 @@ const S = StyleSheet.create({
   },
   coverTitle: {
     fontSize: 36,
-    fontFamily: "Helvetica-Bold",
+    fontFamily: "Poppins",
+    fontWeight: 700,
     color: BRAND.darkText,
     textAlign: "center",
     marginBottom: 12,
@@ -151,7 +170,7 @@ const S = StyleSheet.create({
   },
   coverSubtitle: {
     fontSize: 14,
-    fontFamily: "Helvetica",
+    fontFamily: "Poppins",
     color: BRAND.mutedText,
     textAlign: "center",
     letterSpacing: 1,
@@ -164,7 +183,7 @@ const S = StyleSheet.create({
     textAlign: "center",
     fontSize: 11,
     color: BRAND.mutedText,
-    fontFamily: "Helvetica",
+    fontFamily: "Poppins",
   },
 
   // Story page — illustration area (top half)
@@ -190,7 +209,8 @@ const S = StyleSheet.create({
   pageNumText: {
     fontSize: 10,
     color: BRAND.white,
-    fontFamily: "Helvetica-Bold",
+    fontFamily: "Poppins",
+    fontWeight: 600,
   },
 
   // Story page — text area (bottom half)
@@ -202,7 +222,7 @@ const S = StyleSheet.create({
   },
   storyText: {
     fontSize: 13,
-    fontFamily: "Helvetica",
+    fontFamily: "Poppins",
     color: BRAND.darkText,
     lineHeight: 1.7,
   },
@@ -214,7 +234,8 @@ const S = StyleSheet.create({
   },
   sectionHeading: {
     fontSize: 26,
-    fontFamily: "Helvetica-Bold",
+    fontFamily: "Poppins",
+    fontWeight: 700,
     color: BRAND.darkText,
     marginBottom: 28,
     borderBottom: `2 solid ${BRAND.skyBlue}`,
@@ -229,13 +250,14 @@ const S = StyleSheet.create({
   },
   vocabWord: {
     fontSize: 14,
-    fontFamily: "Helvetica-Bold",
+    fontFamily: "Poppins",
+    fontWeight: 600,
     color: BRAND.darkText,
     marginBottom: 2,
   },
   vocabMeaning: {
     fontSize: 12,
-    fontFamily: "Helvetica",
+    fontFamily: "Poppins",
     color: BRAND.mutedText,
     lineHeight: 1.5,
   },
@@ -246,21 +268,23 @@ const S = StyleSheet.create({
   },
   quizQuestion: {
     fontSize: 13,
-    fontFamily: "Helvetica-Bold",
+    fontFamily: "Poppins",
+    fontWeight: 600,
     color: BRAND.darkText,
     marginBottom: 8,
     lineHeight: 1.4,
   },
   quizOption: {
     fontSize: 12,
-    fontFamily: "Helvetica",
+    fontFamily: "Poppins",
     color: BRAND.darkText,
     marginBottom: 4,
     paddingLeft: 10,
   },
   quizOptionCorrect: {
     fontSize: 12,
-    fontFamily: "Helvetica-Bold",
+    fontFamily: "Poppins",
+    fontWeight: 600,
     color: "#166534",
     marginBottom: 4,
     paddingLeft: 10,

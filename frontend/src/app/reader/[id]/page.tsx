@@ -11,16 +11,7 @@ import { SproutButton } from "@/components/ui/sprout-button";
 import { SproutBadge } from "@/components/ui/sprout-misc";
 import type { StoryResponse } from "@/lib/auth-types";
 import { STORY_SESSION_KEY } from "@/lib/auth-types";
-
-// Page-gradient palette cycles for visual variety
-const GRADIENTS = [
-  "linear-gradient(135deg, #B9FBC0 0%, #6CC6FF 100%)",
-  "linear-gradient(135deg, #FFD8A8 0%, #FFE66D 100%)",
-  "linear-gradient(135deg, #6CC6FF 0%, #BFA7FF 100%)",
-  "linear-gradient(135deg, #BFA7FF 0%, #FFD8A8 100%)",
-  "linear-gradient(135deg, #B9FBC0 0%, #BFA7FF 100%)",
-];
-const ILLUSTRATIONS = ["📖", "🌟", "✨", "🎨", "🌈", "🦋", "🌙", "⭐", "🌿", "🪄"];
+import { GRADIENTS, ILLUSTRATIONS } from "@/lib/story-constants";
 
 // Fallback sample story shown when no session data is available
 const SAMPLE_PAGES = [

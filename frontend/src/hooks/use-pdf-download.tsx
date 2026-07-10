@@ -16,20 +16,7 @@ import type { StoryResponse } from "@/lib/auth-types";
 import { STORY_SESSION_KEY } from "@/lib/auth-types";
 import type { PdfStoryData, PdfStoryPage } from "@/components/ui/story-pdf-document";
 import { StoryPdfDocument } from "@/components/ui/story-pdf-document";
-
-// ---------------------------------------------------------------------------
-// Story constants — duplicated from reader/[id]/page.tsx intentionally
-// ---------------------------------------------------------------------------
-
-const GRADIENTS = [
-  "linear-gradient(135deg, #B9FBC0 0%, #6CC6FF 100%)",
-  "linear-gradient(135deg, #FFD8A8 0%, #FFE66D 100%)",
-  "linear-gradient(135deg, #6CC6FF 0%, #BFA7FF 100%)",
-  "linear-gradient(135deg, #BFA7FF 0%, #FFD8A8 100%)",
-  "linear-gradient(135deg, #B9FBC0 0%, #BFA7FF 100%)",
-];
-
-const ILLUSTRATIONS = ["🌲", "🦊", "✨", "🌟", "🌙", "🦋", "🌙", "⭐", "🌿", "🪄"];
+import { GRADIENTS, ILLUSTRATIONS } from "@/lib/story-constants";
 
 // ---------------------------------------------------------------------------
 // Hardcoded fallback (mirrors SAMPLE_PAGES in reader/[id]/page.tsx)
