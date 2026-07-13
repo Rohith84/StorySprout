@@ -465,9 +465,13 @@ def generate_story(req: StoryRequest) -> dict:
         raw = _call_model(model, prompt, max_tokens=max_tokens)
 
         # Attempt 1: direct parse + sanitise/repair
+        # first_exc is initialised here so it is always bound, even when
+        # Python deletes the 'as' variable after the except block exits.
+        first_exc: Exception | None = None
         try:
             return _extract_json(raw)
-        except (ValueError, json.JSONDecodeError) as first_exc:
+        except (ValueError, json.JSONDecodeError) as exc:
+            first_exc = exc
             logger.warning(
                 "First JSON parse failed (%s) — sending repair prompt. "
                 "raw_snippet(150)=%r",
