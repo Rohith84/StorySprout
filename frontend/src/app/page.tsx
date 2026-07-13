@@ -1,36 +1,17 @@
 "use client";
 
 import * as React from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import Link from "next/link";
 import {
-  Wand2, Star, BookOpen, Sparkles, ArrowRight, Play, ChevronDown,
-  Shield, Headphones, TrendingUp, Download, CheckCircle2, Quote,
-  Zap, Globe, Users, Heart
+  Wand2, BookOpen, Sparkles, ArrowRight, Play,
+  Shield
 } from "lucide-react";
 import { AppShell, PageWrapper } from "@/components/layout/app-shell";
 import { SproutButton } from "@/components/ui/sprout-button";
-import { StoryCard, GlassCard, StatCard, FeatureCard } from "@/components/ui/sprout-cards";
+import { GlassCard, FeatureCard } from "@/components/ui/sprout-cards";
 import { SearchInput } from "@/components/ui/sprout-inputs";
 import { SproutBadge } from "@/components/ui/sprout-misc";
-import { StoryCardSkeleton } from "@/components/ui/sprout-loading";
-
-/* ─── Sample Data ─────────────────────────────────────────── */
-const featuredStories = [
-  { title: "The Enchanted Forest",      author: "AI Sprout",   emoji: "🌲", gradient: "forest" as const, pages: 24, rating: 4.9, age: "4–7",  isNew: true  },
-  { title: "Luna and the Moon Rabbits", author: "StorySprout", emoji: "🌙", gradient: "sky"    as const, pages: 18, rating: 4.8, age: "5–8"               },
-  { title: "Captain Pip's Treasure",   author: "AI Sprout",   emoji: "🏴‍☠️", gradient: "sunset" as const, pages: 32, rating: 4.7, age: "6–9",  isFavorite: true },
-  { title: "Zara and the Rainbow Seed",author: "StorySprout", emoji: "🌈", gradient: "mint"   as const, pages: 20, rating: 4.9, age: "3–6",  isNew: true  },
-  { title: "The Tiny Dragon's Dream",  author: "AI Sprout",   emoji: "🐉", gradient: "magic"  as const, pages: 28, rating: 4.6, age: "5–8"               },
-  { title: "Benny Builds a Rocket",    author: "StorySprout", emoji: "🚀", gradient: "sky"    as const, pages: 22, rating: 4.8, age: "6–9",  isFavorite: true },
-];
-
-const stats = [
-  { label: "Stories Created",  value: "12K+",  icon: "📚", gradient: "sky"    as const },
-  { label: "Happy Readers",    value: "48K+",  icon: "😊", gradient: "forest" as const },
-  { label: "AI Story Prompts", value: "200K+", icon: "✨", gradient: "sunset" as const },
-  { label: "5-Star Reviews",   value: "8.9K+", icon: "⭐", gradient: "magic"  as const },
-];
 
 const features = [
   { title: "AI Story Magic",       description: "Generate unique, personalised stories with our enchanted AI in seconds.", icon: "🪄", gradient: "sky"    as const },
@@ -46,20 +27,6 @@ const howItWorks = [
   { step: "02", title: "AI Crafts the Magic", desc: "IBM Granite AI writes your personalised story in seconds.", emoji: "🤖" },
   { step: "03", title: "Illustrations Come Alive", desc: "Computer vision generates beautiful artwork for each page.", emoji: "🎨" },
   { step: "04", title: "Read & Explore", desc: "Enjoy the flipbook reader, quiz, vocabulary cards, and audio narration.", emoji: "📖" },
-];
-
-const testimonials = [
-  { name: "Sarah M.", role: "Parent of 3", text: "My kids beg for StorySprout every night! The personalised stories are incredible and I love that I can control the content.", avatar: "👩", rating: 5 },
-  { name: "James K.", role: "Primary School Teacher", text: "I use StorySprout in my classroom and the vocabulary feature alone has improved my students' reading comprehension by 40%.", avatar: "👨‍🏫", rating: 5 },
-  { name: "Priya R.", role: "Child Psychologist", text: "The safe content filtering and age-appropriate themes are exactly what parents and educators need. Highly recommended.", avatar: "👩‍⚕️", rating: 5 },
-];
-
-const faqs = [
-  { q: "Is StorySprout safe for children?", a: "Absolutely. Every story is filtered through our child-safety AI, COPPA-compliant, and reviewed by our moderation team. We never collect personal data from children." },
-  { q: "What ages is StorySprout designed for?", a: "StorySprout creates stories for children aged 3–12. You can select an age range when creating a story to ensure appropriate vocabulary and themes." },
-  { q: "How does the AI story generation work?", a: "We use IBM Granite AI (via IBM watsonx) to generate personalised stories based on your inputs. Our system is fine-tuned specifically for children's literature." },
-  { q: "Can I download stories for offline reading?", a: "Yes! Every story can be downloaded as a beautifully formatted PDF, complete with illustrations. Audio narrations are also available for download." },
-  { q: "How many stories can I create?", a: "Free accounts get 5 stories per month. Premium accounts get unlimited story creation, audio narration, and offline downloads." },
 ];
 
 /* ─── Floating Decorations ────────────────────────────────── */
@@ -100,7 +67,6 @@ function HeroSection() {
     <section className="relative py-16 md:py-28 overflow-hidden">
       <div className="mx-auto max-w-5xl px-4 md:px-6 text-center space-y-8">
         <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="space-y-5">
-          <SproutBadge variant="new" className="mb-2">✨ 200+ New Stories This Week</SproutBadge>
 
           {/* Big Logo/Title */}
           <div className="flex flex-col items-center gap-3">
@@ -202,46 +168,17 @@ function HeroSection() {
           />
         </motion.div>
 
-        {/* Social proof */}
+        {/* Safety badge */}
         <motion.div
-          className="flex flex-wrap items-center justify-center gap-6 text-sm text-muted-foreground font-body"
+          className="flex items-center justify-center text-sm text-muted-foreground font-body"
           initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }}
         >
-          <span className="flex items-center gap-2">
-            <span className="flex -space-x-2">
-              {["🧒","👦","🧒‍♀️","👧"].map((e, i) => (
-                <span key={i} className="w-8 h-8 rounded-full bg-gradient-to-br from-[#6CC6FF] to-[#BFA7FF] flex items-center justify-center text-xs border-2 border-background">{e}</span>
-              ))}
-            </span>
-            <strong className="text-foreground">48K+</strong> happy readers
-          </span>
-          <span className="flex items-center gap-1">
-            {[1,2,3,4,5].map((s) => <Star key={s} size={14} className="fill-[#FFE66D] stroke-[#b8860b]" />)}
-            <strong className="text-foreground ml-1">4.9</strong> avg rating
-          </span>
           <span className="flex items-center gap-1.5">
             <Shield size={14} className="text-[#B9FBC0]" />
             <span>COPPA Certified Safe</span>
           </span>
         </motion.div>
       </div>
-    </section>
-  );
-}
-
-/* ─── Stats Section ───────────────────────────────────────── */
-function StatsSection() {
-  return (
-    <section className="py-8">
-      <PageWrapper>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {stats.map((stat, i) => (
-            <motion.div key={stat.label} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }}>
-              <StatCard label={stat.label} value={stat.value} icon={<span className="text-xl">{stat.icon}</span>} gradient={stat.gradient} />
-            </motion.div>
-          ))}
-        </div>
-      </PageWrapper>
     </section>
   );
 }
@@ -316,124 +253,6 @@ function HowItWorksSection() {
   );
 }
 
-/* ─── Featured Stories ────────────────────────────────────── */
-function FeaturedSection() {
-  return (
-    <section className="py-10">
-      <PageWrapper>
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h2 className="font-heading font-bold text-2xl md:text-3xl">✨ Featured Stories</h2>
-            <p className="text-sm text-muted-foreground mt-1 font-body">Hand-picked adventures for young readers</p>
-          </div>
-          <Link href="/library">
-            <SproutButton variant="outline" size="sm" rightIcon={<ArrowRight size={14} />}>View all</SproutButton>
-          </Link>
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-          {featuredStories.map((story, i) => (
-            <motion.div key={story.title} initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.07 }}>
-              <StoryCard
-                title={story.title} author={story.author} coverEmoji={story.emoji}
-                coverGradient={story.gradient} pages={story.pages} rating={story.rating}
-                ageRange={story.age} isNew={story.isNew} isFavorite={story.isFavorite}
-              />
-            </motion.div>
-          ))}
-        </div>
-      </PageWrapper>
-    </section>
-  );
-}
-
-/* ─── Testimonials ────────────────────────────────────────── */
-function TestimonialsSection() {
-  return (
-    <section className="py-12" id="testimonials">
-      <PageWrapper>
-        <div className="text-center mb-12 space-y-2">
-          <SproutBadge variant="peach">Loved by Families</SproutBadge>
-          <h2 className="font-heading font-bold text-3xl md:text-5xl">What Parents Say 💛</h2>
-        </div>
-        <div className="grid md:grid-cols-3 gap-6">
-          {testimonials.map((t, i) => (
-            <motion.div key={t.name} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }}>
-              <GlassCard padding="lg" className="h-full flex flex-col gap-4">
-                <Quote size={24} className="text-[#6CC6FF] opacity-60" />
-                <p className="text-sm font-body text-muted-foreground leading-relaxed flex-1">"{t.text}"</p>
-                <div className="flex items-center gap-1 mb-1">
-                  {Array.from({ length: t.rating }).map((_, j) => (
-                    <Star key={j} size={14} className="fill-[#FFE66D] stroke-[#b8860b]" />
-                  ))}
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#6CC6FF] to-[#BFA7FF] flex items-center justify-center text-lg">{t.avatar}</div>
-                  <div>
-                    <p className="font-heading font-bold text-sm">{t.name}</p>
-                    <p className="text-xs text-muted-foreground font-body">{t.role}</p>
-                  </div>
-                </div>
-              </GlassCard>
-            </motion.div>
-          ))}
-        </div>
-      </PageWrapper>
-    </section>
-  );
-}
-
-/* ─── FAQ ─────────────────────────────────────────────────── */
-function FAQSection() {
-  const [open, setOpen] = React.useState<number | null>(null);
-  return (
-    <section className="py-12" id="faq">
-      <PageWrapper maxWidth="2xl">
-        <div className="text-center mb-12 space-y-2">
-          <SproutBadge variant="sky">Got Questions?</SproutBadge>
-          <h2 className="font-heading font-bold text-3xl md:text-5xl">Frequently Asked ❓</h2>
-        </div>
-        <div className="space-y-3">
-          {faqs.map((faq, i) => (
-            <motion.div
-              key={i}
-              initial={{ opacity: 0, y: 10 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: i * 0.07 }}
-            >
-              <GlassCard hover={false} padding="none">
-                <button
-                  className="w-full flex items-center justify-between p-5 text-left gap-4"
-                  onClick={() => setOpen(open === i ? null : i)}
-                  aria-expanded={open === i}
-                >
-                  <span className="font-heading font-semibold text-sm md:text-base">{faq.q}</span>
-                  <motion.div animate={{ rotate: open === i ? 180 : 0 }} transition={{ duration: 0.2 }} className="shrink-0">
-                    <ChevronDown size={18} className="text-muted-foreground" />
-                  </motion.div>
-                </button>
-                <AnimatePresence>
-                  {open === i && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.25 }}
-                      className="overflow-hidden"
-                    >
-                      <p className="px-5 pb-5 text-sm text-muted-foreground font-body leading-relaxed">{faq.a}</p>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </GlassCard>
-            </motion.div>
-          ))}
-        </div>
-      </PageWrapper>
-    </section>
-  );
-}
-
 /* ─── CTA Section ─────────────────────────────────────────── */
 function CTASection() {
   return (
@@ -457,7 +276,7 @@ function CTASection() {
           </div>
           <div className="relative z-10 space-y-6 max-w-xl mx-auto">
             <h2 className="font-heading font-extrabold text-3xl md:text-6xl">Start Your Story Today 🌱</h2>
-            <p className="font-body opacity-90 text-base md:text-xl">Join 48,000+ families growing a love of reading with personalised AI stories.</p>
+            <p className="font-body opacity-90 text-base md:text-xl">Grow a love of reading with personalised AI stories.</p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <Link href="/login">
                 <SproutButton variant="glass" size="xl" leftIcon={<Sparkles size={18} />} className="bg-white/30 border-white/40 text-white hover:bg-white/50">
@@ -484,12 +303,8 @@ export default function HomePage() {
     <AppShell footerCompact={false}>
       <FloatingDecorations />
       <HeroSection />
-      <StatsSection />
       <HowItWorksSection />
       <FeaturesSection />
-      <FeaturedSection />
-      <TestimonialsSection />
-      <FAQSection />
       <CTASection />
     </AppShell>
   );

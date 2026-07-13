@@ -4,29 +4,11 @@ import * as React from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import {
-  BookOpen, Wand2, Library, Download, Settings, HelpCircle,
-  Home, Star, Flame, Clock, BookMarked, TrendingUp, Plus,
-  ArrowRight, Play
+  Wand2, Library, Download, Settings, HelpCircle,
+  Home, Plus
 } from "lucide-react";
-import { AppShell, PageWrapper } from "@/components/layout/app-shell";
-import { GlassCard, StatCard, StoryCard } from "@/components/ui/sprout-cards";
+import { PageWrapper } from "@/components/layout/app-shell";
 import { SproutButton } from "@/components/ui/sprout-button";
-import { SproutBadge } from "@/components/ui/sprout-misc";
-import { ProgressBar } from "@/components/ui/sprout-misc";
-import { Skeleton } from "@/components/ui/sprout-loading";
-
-const recentStories = [
-  { title: "The Dragon's Lullaby",   emoji: "🐉", gradient: "magic"  as const, pages: 28, rating: 4.8, age: "5–8", isNew: true },
-  { title: "Poppy and the Rainbow",  emoji: "🌈", gradient: "sunset" as const, pages: 20, rating: 4.9, age: "3–6" },
-  { title: "The Starship Twins",     emoji: "🚀", gradient: "sky"    as const, pages: 24, rating: 4.7, age: "6–9" },
-  { title: "Mochi's Forest Walk",    emoji: "🦔", gradient: "forest" as const, pages: 18, rating: 4.9, age: "4–7", isFavorite: true },
-];
-
-const favoriteStories = [
-  { title: "The Enchanted Library",  emoji: "📚", gradient: "sky"    as const, pages: 32, rating: 5.0, age: "6–9", isFavorite: true },
-  { title: "Coco's Big Adventure",   emoji: "🐼", gradient: "mint"   as const, pages: 26, rating: 4.8, age: "4–7", isFavorite: true },
-  { title: "Night Sky Stories",      emoji: "🌙", gradient: "magic"  as const, pages: 22, rating: 4.9, age: "5–8", isFavorite: true },
-];
 
 const sidebarNav = [
   { label: "Dashboard",    href: "/dashboard",  icon: Home,        active: true  },
@@ -97,34 +79,6 @@ function DashboardSidebar() {
   );
 }
 
-/* ─── Animated Stat Card ──────────────────────────────────── */
-function AnimatedStatCard({ icon, label, value, gradient, suffix = "" }: { icon: string; label: string; value: number; gradient: "sky" | "forest" | "sunset" | "magic"; suffix?: string }) {
-  const [count, setCount] = React.useState(0);
-
-  React.useEffect(() => {
-    const timer = setTimeout(() => {
-      let start = 0;
-      const step = Math.ceil(value / 40);
-      const interval = setInterval(() => {
-        start += step;
-        if (start >= value) { setCount(value); clearInterval(interval); }
-        else setCount(start);
-      }, 30);
-      return () => clearInterval(interval);
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [value]);
-
-  return (
-    <StatCard
-      label={label}
-      value={`${count}${suffix}`}
-      icon={<span className="text-xl">{icon}</span>}
-      gradient={gradient}
-    />
-  );
-}
-
 /* ─── Page ────────────────────────────────────────────────── */
 export default function DashboardPage() {
   return (
@@ -166,129 +120,6 @@ export default function DashboardPage() {
                   </Link>
                 </div>
               </div>
-            </motion.div>
-
-            {/* Stats Grid */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              {[
-                { icon: "📚", label: "Books Created",       value: 23,  gradient: "sky"    as const, suffix: "" },
-                { icon: "⏱️", label: "Reading Time",         value: 847, gradient: "forest" as const, suffix: "m" },
-                { icon: "🔤", label: "Vocabulary Learned",  value: 142, gradient: "sunset" as const, suffix: "" },
-                { icon: "🔥", label: "Daily Streak",        value: 7,   gradient: "magic"  as const, suffix: "d" },
-              ].map((s, i) => (
-                <motion.div key={s.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 + i * 0.08 }}>
-                  <AnimatedStatCard {...s} />
-                </motion.div>
-              ))}
-            </div>
-
-            {/* Continue Reading */}
-            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
-              <GlassCard padding="lg">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="font-heading font-bold text-xl">📖 Continue Reading</h2>
-                  <SproutBadge variant="sky">In Progress</SproutBadge>
-                </div>
-                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                  <div
-                    className="w-16 h-20 rounded-2xl flex items-center justify-center text-3xl shrink-0 shadow-md"
-                    style={{ background: "linear-gradient(135deg, #6CC6FF 0%, #BFA7FF 100%)" }}
-                  >
-                    🐉
-                  </div>
-                  <div className="flex-1 min-w-0 space-y-2">
-                    <h3 className="font-heading font-bold text-base">The Dragon's Lullaby</h3>
-                    <p className="text-xs text-muted-foreground font-body">Page 12 of 28 · 16 pages remaining</p>
-                    <ProgressBar value={43} color="#6CC6FF" showValue label="Reading progress" />
-                  </div>
-                  <Link href="/reader/1">
-                    <SproutButton variant="primary" size="sm" leftIcon={<Play size={14} />} className="shrink-0">
-                      Resume
-                    </SproutButton>
-                  </Link>
-                </div>
-              </GlassCard>
-            </motion.div>
-
-            {/* Recent Stories */}
-            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="font-heading font-bold text-xl">🕐 Recent Stories</h2>
-                <Link href="/library">
-                  <SproutButton variant="outline" size="sm" rightIcon={<ArrowRight size={14} />}>View all</SproutButton>
-                </Link>
-              </div>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {recentStories.map((s, i) => (
-                  <motion.div key={s.title} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 + i * 0.07 }}>
-                    <StoryCard
-                      title={s.title} coverEmoji={s.emoji} coverGradient={s.gradient}
-                      pages={s.pages} rating={s.rating} ageRange={s.age} isNew={s.isNew} isFavorite={s.isFavorite}
-                    />
-                  </motion.div>
-                ))}
-              </div>
-            </motion.div>
-
-            {/* Favorite Stories */}
-            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="font-heading font-bold text-xl">⭐ Favorite Stories</h2>
-                <Link href="/library?filter=favorites">
-                  <SproutButton variant="outline" size="sm" rightIcon={<ArrowRight size={14} />}>View all</SproutButton>
-                </Link>
-              </div>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                {favoriteStories.map((s, i) => (
-                  <motion.div key={s.title} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 + i * 0.07 }}>
-                    <StoryCard
-                      title={s.title} coverEmoji={s.emoji} coverGradient={s.gradient}
-                      pages={s.pages} rating={s.rating} ageRange={s.age} isFavorite
-                    />
-                  </motion.div>
-                ))}
-              </div>
-            </motion.div>
-
-            {/* Reading streak card */}
-            <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6 }}>
-              <GlassCard padding="lg">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
-                  <div className="flex items-center gap-4">
-                    <motion.div
-                      animate={{ scale: [1, 1.1, 1] }}
-                      transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
-                      className="text-5xl"
-                    >
-                      🔥
-                    </motion.div>
-                    <div>
-                      <p className="font-body text-sm text-muted-foreground">Current Streak</p>
-                      <p className="font-heading font-extrabold text-4xl text-foreground">7 Days</p>
-                    </div>
-                  </div>
-                  <div className="flex-1 space-y-3">
-                    <div className="flex gap-2">
-                      {["M","T","W","T","F","S","S"].map((d, i) => (
-                        <div key={i} className="flex flex-col items-center gap-1.5 flex-1">
-                          <motion.div
-                            initial={{ scale: 0 }}
-                            animate={{ scale: 1 }}
-                            transition={{ delay: 0.6 + i * 0.07, type: "spring", stiffness: 300 }}
-                            className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-heading font-bold ${
-                              i < 7 ? "bg-gradient-to-br from-[#FFE66D] to-[#FFD8A8] text-[#3b3000] shadow-sm" : "bg-muted text-muted-foreground"
-                            }`}
-                          >
-                            {i < 7 ? "✓" : d}
-                          </motion.div>
-                          <span className="text-[10px] text-muted-foreground font-body">{d}</span>
-                        </div>
-                      ))}
-                    </div>
-                    <p className="text-xs text-muted-foreground font-body">🎯 Keep reading to maintain your streak!</p>
-                  </div>
-                </div>
-              </GlassCard>
             </motion.div>
 
           </div>

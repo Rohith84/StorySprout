@@ -10,17 +10,7 @@ import { SearchInput } from "@/components/ui/sprout-inputs";
 import { SproutBadge } from "@/components/ui/sprout-misc";
 import { StoryCardSkeleton } from "@/components/ui/sprout-loading";
 
-const allStories = [
-  { id: "1", title: "The Enchanted Forest",      emoji: "🌲", gradient: "forest" as const, pages: 24, rating: 4.9, age: "4–7",  genre: "Fantasy",   isFavorite: false, isNew: true,  createdAt: "2 days ago"  },
-  { id: "2", title: "Luna and the Moon Rabbits", emoji: "🌙", gradient: "sky"    as const, pages: 18, rating: 4.8, age: "5–8",  genre: "Adventure", isFavorite: true,  isNew: false, createdAt: "3 days ago"  },
-  { id: "3", title: "Captain Pip's Treasure",   emoji: "🏴‍☠️", gradient: "sunset" as const, pages: 32, rating: 4.7, age: "6–9",  genre: "Adventure", isFavorite: true,  isNew: false, createdAt: "1 week ago"  },
-  { id: "4", title: "Zara and the Rainbow Seed",emoji: "🌈", gradient: "mint"   as const, pages: 20, rating: 4.9, age: "3–6",  genre: "Fantasy",   isFavorite: false, isNew: true,  createdAt: "1 day ago"   },
-  { id: "5", title: "The Tiny Dragon's Dream",  emoji: "🐉", gradient: "magic"  as const, pages: 28, rating: 4.6, age: "5–8",  genre: "Fantasy",   isFavorite: false, isNew: false, createdAt: "5 days ago"  },
-  { id: "6", title: "Benny Builds a Rocket",    emoji: "🚀", gradient: "sky"    as const, pages: 22, rating: 4.8, age: "6–9",  genre: "Science",   isFavorite: true,  isNew: false, createdAt: "1 week ago"  },
-  { id: "7", title: "The Starship Twins",        emoji: "⭐", gradient: "sky"    as const, pages: 26, rating: 4.7, age: "6–9",  genre: "Science",   isFavorite: false, isNew: false, createdAt: "2 weeks ago" },
-  { id: "8", title: "Mochi's Forest Walk",       emoji: "🦔", gradient: "forest" as const, pages: 16, rating: 4.9, age: "3–6",  genre: "Nature",    isFavorite: true,  isNew: false, createdAt: "3 days ago"  },
-  { id: "9", title: "The Friendship Bridge",     emoji: "🌸", gradient: "sunset" as const, pages: 18, rating: 4.8, age: "4–7",  genre: "Friendship",isFavorite: false, isNew: true,  createdAt: "4 hours ago" },
-];
+const allStories: { id: string; title: string; emoji: string; gradient: "forest" | "sky" | "sunset" | "mint" | "magic"; pages: number; rating: number; age: string; genre: string; isFavorite: boolean; isNew: boolean; createdAt: string }[] = [];
 
 const ageFilters = ["All Ages", "3–5", "6–8", "9–12"];
 const genreFilters = ["All", "Fantasy", "Adventure", "Science", "Nature", "Friendship"];
@@ -199,9 +189,13 @@ export default function LibraryPage() {
           </div>
         ) : filtered.length === 0 ? (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-20 space-y-3">
-            <div className="text-6xl">😕</div>
-            <h3 className="font-heading font-bold text-xl">No stories found</h3>
-            <p className="text-muted-foreground font-body text-sm">Try a different search or filter</p>
+            <div className="text-6xl">{stories.length === 0 ? "📚" : "😕"}</div>
+            <h3 className="font-heading font-bold text-xl">
+              {stories.length === 0 ? "No stories yet" : "No stories found"}
+            </h3>
+            <p className="text-muted-foreground font-body text-sm">
+              {stories.length === 0 ? "Create your first story." : "Try a different search or filter"}
+            </p>
             <Link href="/create">
               <SproutButton variant="primary" size="md" leftIcon={<Plus size={16} />}>Create a Story</SproutButton>
             </Link>
