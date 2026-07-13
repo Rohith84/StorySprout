@@ -41,13 +41,13 @@ const AGE_RANGES = [
 ] as const;
 
 const LANGUAGES = [
-  { id: "English",    label: "English",    emoji: "🇬🇧" },
-  { id: "Hindi",      label: "Hindi",      emoji: "🇮🇳" },
-  { id: "Tamil",      label: "Tamil",      emoji: "🇮🇳" },
-  { id: "Spanish",    label: "Spanish",    emoji: "🇪🇸" },
-  { id: "French",     label: "French",     emoji: "🇫🇷" },
-  { id: "Arabic",     label: "Arabic",     emoji: "🇸🇦" },
-  { id: "Mandarin",   label: "Mandarin",   emoji: "🇨🇳" },
+  { id: "English",          label: "English",          emoji: "🇬🇧" },
+  { id: "Hindi",            label: "Hindi",            emoji: "🇮🇳" },
+  { id: "Tamil",            label: "Tamil",            emoji: "🇮🇳" },
+  { id: "Spanish",          label: "Spanish",          emoji: "🇪🇸" },
+  { id: "Mandarin Chinese", label: "Mandarin Chinese", emoji: "🇨🇳" },
+  { id: "French",           label: "French",           emoji: "🇫🇷" },
+  { id: "Arabic",           label: "Arabic",           emoji: "🇸🇦" },
 ] as const;
 
 const ART_STYLES = [

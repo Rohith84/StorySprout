@@ -29,6 +29,17 @@ _LENGTH_TOKENS = {"short": 2500, "medium": 4500, "lengthy": 8000}
 # prompt (not enforced in code).
 _PAGE_CHAR_HINT = {"short": 80, "medium": 100, "lengthy": 140}
 
+# Languages that use non-Latin / logographic scripts and need tighter per-page
+# character limits to avoid JSON truncation.  Each value overrides _PAGE_CHAR_HINT
+# for that language.  Mandarin uses logographs (each char = more tokens), so the
+# limit is even tighter than Tamil/Hindi.
+_NON_LATIN_PAGE_CHAR_HINT: dict[str, dict[str, int]] = {
+    "tamil":            {"short": 60, "medium": 80, "lengthy": 110},
+    "hindi":            {"short": 60, "medium": 80, "lengthy": 110},
+    "arabic":           {"short": 60, "medium": 80, "lengthy": 110},
+    "mandarin chinese": {"short": 40, "medium": 55, "lengthy":  80},
+}
+
 
 def _make_credentials() -> Credentials:
     return Credentials(
@@ -289,14 +300,22 @@ def _build_prompt(req: StoryRequest, strict: bool = False) -> str:
 
     language = req.language if req.language else "English"
 
+    # Override page_char_hint for non-Latin / logographic scripts to reduce
+    # the risk of JSON truncation when the model encodes dense characters.
+    non_latin_hint = _NON_LATIN_PAGE_CHAR_HINT.get(language.lower())
+    if non_latin_hint:
+        page_char_hint = non_latin_hint.get(req.length, page_char_hint)
+
     if language.lower() != "english":
         language_instruction = (
-            f"LANGUAGE: Write ALL story content in {language} script. "
+            f"LANGUAGE: Write ALL story content in {language}. "
             f"Title, every page text, quiz questions, options, answers, "
             f"vocabulary words and meanings — ALL must be in {language}. "
             f"Do NOT use English anywhere in the story content. "
             f"JSON SAFETY: Each page text must be ONE continuous sentence or short phrase "
-            f"with NO line breaks inside. Keep each page text under {page_char_hint} characters."
+            f"with NO literal newline characters inside any JSON string. "
+            f"Keep each page text under {page_char_hint} characters. "
+            f"Do NOT include any trailing commas in the JSON."
         )
     else:
         language_instruction = (

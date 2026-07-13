@@ -64,7 +64,7 @@ export interface StoryPayload {
   length: "short" | "medium" | "lengthy";
   artStyle: "sketch" | "color";
   ageLevel: "3-5" | "6-8" | "9-12";
-  /** Story language, e.g. "English", "Tamil", "Hindi". Defaults to "English". */
+  /** Story language, e.g. "English", "Tamil", "Hindi", "Spanish", "Mandarin Chinese". Defaults to "English". */
   language: string;
 }
 
