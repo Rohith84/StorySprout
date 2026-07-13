@@ -96,3 +96,18 @@ export interface StoryResponse {
 
 /** sessionStorage key used to pass the generated story between pages. */
 export const STORY_SESSION_KEY = "sprout_current_story";
+
+/** sessionStorage key used to pass the story creation inputs to the PDF generator. */
+export const STORY_PAYLOAD_SESSION_KEY = "sprout_story_payload";
+
+/**
+ * The story creation payload as persisted to sessionStorage.
+ * Extends StoryPayload with a creation timestamp and the optional language
+ * field that Quick mode adds (Build mode omits it).
+ */
+export interface StoredPayload extends StoryPayload {
+  /** ISO-8601 timestamp captured when the story was first saved. */
+  createdAt: string;
+  /** Story language — present for Quick mode, absent for Build mode. */
+  language?: string;
+}

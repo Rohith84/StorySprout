@@ -9,6 +9,7 @@ import { SproutButton } from "@/components/ui/sprout-button";
 import { SproutBadge } from "@/components/ui/sprout-misc";
 import { useToast, ToastContainer } from "@/components/ui/sprout-misc";
 import { usePdfDownload } from "@/hooks/use-pdf-download";
+import { useShareLink } from "@/hooks/use-share-link";
 import type { StoryResponse } from "@/lib/auth-types";
 import { STORY_SESSION_KEY } from "@/lib/auth-types";
 
@@ -95,7 +96,44 @@ export default function DownloadsPage() {
   const [downloaded, setDownloaded] = React.useState<Set<string>>(new Set());
 
   const [copied, setCopied] = React.useState(false);
-  const shareLink = "https://storysprout.app/story/enchanted-forest";
+  const shareLink = useShareLink();
+
+  const shareHandlers = React.useMemo(() => {
+    const title = meta.title;
+    const message = `Read my story: ${title}\n\n`;
+
+    return {
+      WhatsApp: () => {
+        const url = `https://wa.me/?text=${encodeURIComponent(`${message}${shareLink}`)}`;
+        window.open(url, "_blank", "noopener,noreferrer");
+      },
+      Twitter: () => {
+        const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(message)}&url=${encodeURIComponent(shareLink)}`;
+        window.open(url, "_blank", "noopener,noreferrer");
+      },
+      Email: () => {
+        const url = `mailto:?subject=${encodeURIComponent(title)}&body=${encodeURIComponent(`${message}${shareLink}`)}`;
+        window.location.href = url;
+      },
+      "More…": async () => {
+        if (typeof navigator !== "undefined" && navigator.share) {
+          await navigator.share({
+            title,
+            text: message.trim(),
+            url: shareLink,
+          });
+          return;
+        }
+
+        if (typeof navigator !== "undefined") {
+          await navigator.clipboard.writeText(shareLink);
+          toast.success("Link copied!", "Share this with friends and family.");
+          setCopied(true);
+          setTimeout(() => setCopied(false), 3000);
+        }
+      },
+    } as const;
+  }, [meta.title, shareLink, toast]);
 
   // ── PDF handler ───────────────────────────────────────────────────────────
   async function handlePdfDownload() {
@@ -216,10 +254,10 @@ export default function DownloadsPage() {
                   disabled={isGenerating || pdfDone}
                   className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-heading font-semibold text-sm transition-all shrink-0 ${
                     pdfDone
-                      ? "bg-[#B9FBC0]/30 text-[#1a5a2a] dark:text-[#B9FBC0] border border-[#B9FBC0]"
+                      ? "bg-mint/30 text-[#1a5a2a] dark:text-mint border border-mint"
                       : isGenerating
                         ? "opacity-70 cursor-not-allowed bg-muted text-muted-foreground"
-                        : "bg-gradient-to-r from-[#6CC6FF] to-[#BFA7FF] text-white shadow-md hover:brightness-105"
+                        : "gradient-sky text-white shadow-md hover:brightness-105"
                   }`}
                 >
                   {pdfDone ? (
@@ -268,10 +306,10 @@ export default function DownloadsPage() {
                     disabled={!!downloading}
                     className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-heading font-semibold text-sm transition-all shrink-0 ${
                       downloaded.has(item.id)
-                        ? "bg-[#B9FBC0]/30 text-[#1a5a2a] dark:text-[#B9FBC0] border border-[#B9FBC0]"
+                        ? "bg-mint/30 text-[#1a5a2a] dark:text-mint border border-mint"
                         : downloading === item.id
                           ? "opacity-70 cursor-not-allowed bg-muted text-muted-foreground"
-                          : "bg-gradient-to-r from-[#6CC6FF] to-[#BFA7FF] text-white shadow-md hover:brightness-105"
+                          : "gradient-sky text-white shadow-md hover:brightness-105"
                     }`}
                   >
                     {downloaded.has(item.id) ? (
@@ -292,7 +330,7 @@ export default function DownloadsPage() {
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}>
           <GlassCard padding="lg" hover={false} className="space-y-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#BFA7FF] to-[#6CC6FF] flex items-center justify-center shadow-md">
+              <div className="w-10 h-10 rounded-2xl bg-linear-to-br from-lavender to-sky-blue flex items-center justify-center shadow-md">
                 <Share2 size={18} className="text-white" />
               </div>
               <div>
@@ -311,8 +349,8 @@ export default function DownloadsPage() {
                 onClick={handleCopy}
                 className={`h-11 px-4 rounded-2xl font-heading font-semibold text-sm flex items-center gap-2 transition-all shrink-0 ${
                   copied
-                    ? "bg-[#B9FBC0]/30 text-[#1a5a2a] dark:text-[#B9FBC0] border border-[#B9FBC0]"
-                    : "bg-gradient-to-r from-[#6CC6FF] to-[#BFA7FF] text-white shadow-md hover:brightness-105"
+                    ? "bg-mint/30 text-[#1a5a2a] dark:text-mint border border-mint"
+                    : "gradient-sky text-white shadow-md hover:brightness-105"
                 }`}
               >
                 {copied ? <CheckCircle2 size={16} /> : <Copy size={16} />}
@@ -332,6 +370,7 @@ export default function DownloadsPage() {
                   key={s.name}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.9 }}
+                  onClick={() => void shareHandlers[s.name as keyof typeof shareHandlers]()}
                   className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-heading font-semibold border border-border hover:bg-muted/60 transition-colors"
                 >
                   <span>{s.emoji}</span>

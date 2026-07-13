@@ -26,28 +26,9 @@ import {
 } from "@react-pdf/renderer";
 
 // ---------------------------------------------------------------------------
-// Font — register Poppins from Google Fonts static CDN, matching the web app.
 // Emoji source — Apple Color Emoji PNGs via jsDelivr (same "3D" glyphs as
-// the browser). Both must run once at module load time before any pdf() call.
+// the browser). Must run once at module load time before any pdf() call.
 // ---------------------------------------------------------------------------
-Font.register({
-  family: "Poppins",
-  fonts: [
-    {
-      src: "https://fonts.gstatic.com/s/poppins/v22/pxiEyp8kv8JHgFVrFJDUc1NECPY.woff2",
-      fontWeight: 400,
-    },
-    {
-      src: "https://fonts.gstatic.com/s/poppins/v22/pxiByp8kv8JHgFVrLEj6V1tvFP-KUEg.woff2",
-      fontWeight: 600,
-    },
-    {
-      src: "https://fonts.gstatic.com/s/poppins/v22/pxiByp8kv8JHgFVrLCz7V1tvFP-KUEg.woff2",
-      fontWeight: 700,
-    },
-  ],
-});
-
 Font.registerEmojiSource({
   builder: (code: string) =>
     `https://cdn.jsdelivr.net/npm/emoji-datasource-apple@15.1.2/img/apple/64/${code}.png`,
@@ -75,11 +56,27 @@ export interface PdfQuizQuestion {
   answer: string;
 }
 
+export interface PdfStoryMeta {
+  heroName?: string;
+  heroType: string;
+  theme: string;
+  ageLevel: string;
+  language?: string;
+  storyType: string;
+  incident?: string;
+  lesson?: string;
+  artStyle: string;
+  length: string;
+  createdAt: string;
+}
+
 export interface PdfStoryData {
   title: string;
   pages: PdfStoryPage[];
   vocabulary: PdfVocabItem[];
   quiz: PdfQuizQuestion[];
+  /** Story creation inputs — present when sessionStorage payload is available. */
+  storyMeta?: PdfStoryMeta;
 }
 
 // ---------------------------------------------------------------------------
@@ -137,7 +134,6 @@ const S = StyleSheet.create({
     width: "100%",
     height: "100%",
     backgroundColor: BRAND.white,
-    fontFamily: "Poppins",
   },
 
   // Cover
@@ -161,8 +157,6 @@ const S = StyleSheet.create({
   },
   coverTitle: {
     fontSize: 36,
-    fontFamily: "Poppins",
-    fontWeight: 700,
     color: BRAND.darkText,
     textAlign: "center",
     marginBottom: 12,
@@ -170,7 +164,6 @@ const S = StyleSheet.create({
   },
   coverSubtitle: {
     fontSize: 14,
-    fontFamily: "Poppins",
     color: BRAND.mutedText,
     textAlign: "center",
     letterSpacing: 1,
@@ -183,7 +176,6 @@ const S = StyleSheet.create({
     textAlign: "center",
     fontSize: 11,
     color: BRAND.mutedText,
-    fontFamily: "Poppins",
   },
 
   // Story page — illustration area (top half)
@@ -209,8 +201,6 @@ const S = StyleSheet.create({
   pageNumText: {
     fontSize: 10,
     color: BRAND.white,
-    fontFamily: "Poppins",
-    fontWeight: 600,
   },
 
   // Story page — text area (bottom half)
@@ -222,7 +212,6 @@ const S = StyleSheet.create({
   },
   storyText: {
     fontSize: 13,
-    fontFamily: "Poppins",
     color: BRAND.darkText,
     lineHeight: 1.7,
   },
@@ -234,8 +223,6 @@ const S = StyleSheet.create({
   },
   sectionHeading: {
     fontSize: 26,
-    fontFamily: "Poppins",
-    fontWeight: 700,
     color: BRAND.darkText,
     marginBottom: 28,
     borderBottom: `2 solid ${BRAND.skyBlue}`,
@@ -250,14 +237,11 @@ const S = StyleSheet.create({
   },
   vocabWord: {
     fontSize: 14,
-    fontFamily: "Poppins",
-    fontWeight: 600,
     color: BRAND.darkText,
     marginBottom: 2,
   },
   vocabMeaning: {
     fontSize: 12,
-    fontFamily: "Poppins",
     color: BRAND.mutedText,
     lineHeight: 1.5,
   },
@@ -268,29 +252,86 @@ const S = StyleSheet.create({
   },
   quizQuestion: {
     fontSize: 13,
-    fontFamily: "Poppins",
-    fontWeight: 600,
     color: BRAND.darkText,
     marginBottom: 8,
     lineHeight: 1.4,
   },
   quizOption: {
     fontSize: 12,
-    fontFamily: "Poppins",
     color: BRAND.darkText,
     marginBottom: 4,
     paddingLeft: 10,
   },
   quizOptionCorrect: {
     fontSize: 12,
-    fontFamily: "Poppins",
-    fontWeight: 600,
     color: "#166534",
     marginBottom: 4,
     paddingLeft: 10,
     backgroundColor: "#dcfce7",
     paddingVertical: 3,
     borderRadius: 4,
+  },
+
+  // Story Details page
+  detailsHeaderArea: {
+    height: 120,
+    position: "relative",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  detailsHeaderEmoji: {
+    fontSize: 36,
+    textAlign: "center",
+    marginBottom: 8,
+  },
+  detailsHeaderTitle: {
+    fontSize: 22,
+    color: BRAND.darkText,
+    textAlign: "center",
+  },
+  detailsBody: {
+    flex: 1,
+    paddingHorizontal: 48,
+    paddingTop: 32,
+    paddingBottom: 48,
+    backgroundColor: BRAND.white,
+  },
+  detailsRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    paddingVertical: 10,
+    borderBottom: `1 solid #e5e7eb`,
+  },
+  detailsLabel: {
+    width: 140,
+    fontSize: 11,
+    color: BRAND.mutedText,
+    paddingRight: 12,
+    lineHeight: 1.5,
+  },
+  detailsValue: {
+    flex: 1,
+    fontSize: 12,
+    color: BRAND.darkText,
+    lineHeight: 1.5,
+  },
+  detailsCreatedRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    paddingVertical: 12,
+    marginTop: 8,
+    borderTop: `2 solid ${BRAND.skyBlue}`,
+  },
+  detailsCreatedLabel: {
+    width: 140,
+    fontSize: 11,
+    color: BRAND.mutedText,
+    paddingRight: 12,
+  },
+  detailsCreatedValue: {
+    flex: 1,
+    fontSize: 12,
+    color: BRAND.darkText,
   },
 });
 
@@ -432,6 +473,57 @@ function QuizPage({ quiz }: { quiz: PdfQuizQuestion[] }) {
 }
 
 // ---------------------------------------------------------------------------
+// StoryDetailsPage
+// ---------------------------------------------------------------------------
+
+interface MetaRowProps {
+  label: string;
+  value: string;
+}
+
+function MetaRow({ label, value }: MetaRowProps) {
+  return (
+    <View style={S.detailsRow}>
+      <Text style={S.detailsLabel}>{label}</Text>
+      <Text style={S.detailsValue}>{value}</Text>
+    </View>
+  );
+}
+
+function StoryDetailsPage({ meta }: { meta: PdfStoryMeta }) {
+  return (
+    <Page size="A4" style={S.pageA4}>
+      {/* Gradient header strip */}
+      <View style={S.detailsHeaderArea}>
+        <GradientRect id="details-grad" stops={COVER_STOPS} />
+        <Text style={S.detailsHeaderEmoji}>📋</Text>
+        <Text style={S.detailsHeaderTitle}>Story Details</Text>
+      </View>
+
+      {/* Metadata rows */}
+      <View style={S.detailsBody}>
+        {meta.heroName  && <MetaRow label="Hero Name"    value={meta.heroName} />}
+        {meta.heroType  && <MetaRow label="Hero Type"    value={meta.heroType} />}
+        <MetaRow label="Theme"       value={meta.theme} />
+        <MetaRow label="Age Group"   value={meta.ageLevel} />
+        {meta.language  && <MetaRow label="Language"    value={meta.language} />}
+        <MetaRow label="Story Type"  value={meta.storyType} />
+        {meta.incident  && <MetaRow label="Incident"    value={meta.incident} />}
+        {meta.lesson    && <MetaRow label="Lesson"      value={meta.lesson} />}
+        <MetaRow label="Art Style"   value={meta.artStyle} />
+        <MetaRow label="Story Length" value={meta.length} />
+
+        {/* Created On — separated by a heavier rule */}
+        <View style={S.detailsCreatedRow}>
+          <Text style={S.detailsCreatedLabel}>Created On</Text>
+          <Text style={S.detailsCreatedValue}>{meta.createdAt}</Text>
+        </View>
+      </View>
+    </Page>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // StoryPdfDocument — main export
 // ---------------------------------------------------------------------------
 
@@ -443,6 +535,7 @@ export function StoryPdfDocument({ data }: StoryPdfDocumentProps) {
   return (
     <Document title={data.title} author="StorySprout" producer="StorySprout">
       <CoverPage title={data.title} />
+      {data.storyMeta && <StoryDetailsPage meta={data.storyMeta} />}
       {data.pages.map((page, i) => (
         <StoryPageComponent key={i} page={page} total={data.pages.length} index={i} />
       ))}

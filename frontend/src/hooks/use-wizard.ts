@@ -10,7 +10,7 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import type { StoryPayload, StoryResponse } from "@/lib/auth-types";
-import { STORY_SESSION_KEY } from "@/lib/auth-types";
+import { STORY_SESSION_KEY, STORY_PAYLOAD_SESSION_KEY } from "@/lib/auth-types";
 import { sanitizeInput } from "@/lib/auth-service";
 
 export interface WizardState {
@@ -105,6 +105,11 @@ export function useWizard() {
       // Persist story for reader / quiz / vocabulary pages
       if (typeof window !== "undefined") {
         sessionStorage.setItem(STORY_SESSION_KEY, JSON.stringify(story));
+        // Persist creation inputs for PDF metadata page
+        sessionStorage.setItem(
+          STORY_PAYLOAD_SESSION_KEY,
+          JSON.stringify({ ...payload, createdAt: new Date().toISOString() }),
+        );
       }
       setSubmitted(payload);
       router.push("/loading");
