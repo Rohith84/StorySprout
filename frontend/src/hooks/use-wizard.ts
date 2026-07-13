@@ -25,6 +25,7 @@ export interface WizardState {
   length: "short" | "medium" | "lengthy";
   artStyle: "sketch" | "color";
   ageLevel: "3-5" | "6-8" | "9-12";
+  language: string;
 }
 
 const INITIAL: WizardState = {
@@ -39,6 +40,7 @@ const INITIAL: WizardState = {
   length: "medium",
   artStyle: "color",
   ageLevel: "6-8",
+  language: "English",
 };
 
 export const TOTAL_STEPS = 9;
@@ -81,6 +83,7 @@ export function useWizard() {
       length:      state.length,
       artStyle:    state.artStyle,
       ageLevel:    state.ageLevel,
+      language:    sanitizeInput(state.language) || "English",
     };
   }
 
