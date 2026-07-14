@@ -2,31 +2,36 @@
 
 import * as React from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import Link from "next/link";
-import { CheckCircle2, Clock } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { CheckCircle2, AlertCircle } from "lucide-react";
+import type { StoryResponse } from "@/lib/auth-types";
+import { STORY_SESSION_KEY, STORY_PAYLOAD_SESSION_KEY } from "@/lib/auth-types";
 
-const steps = [
-  { id: 1, label: "Generating Story",    emoji: "✍️",  color: "#6CC6FF", desc: "Crafting your personalised narrative..." },
-  { id: 2, label: "Checking Safety",     emoji: "🛡️",  color: "#B9FBC0", desc: "Ensuring age-appropriate content..." },
-  { id: 3, label: "Building Quiz",       emoji: "🧩",  color: "#FFD8A8", desc: "Creating comprehension questions..." },
-  { id: 4, label: "Painting Cover Art",  emoji: "🎨",  color: "#BFA7FF", desc: "Drawing your story's cover illustration..." },
-  { id: 5, label: "Almost ready!",       emoji: "📖",  color: "#FFE66D", desc: "Your storybook is coming to life..." },
+const FASTAPI_URL = process.env.NEXT_PUBLIC_FASTAPI_URL ?? "http://localhost:8000";
+
+// Steps that map to real async work phases
+const STEPS = [
+  { id: 1, label: "Generating Story",       emoji: "✍️",  color: "#6CC6FF", desc: "Crafting your personalised narrative…" },
+  { id: 2, label: "Checking Safety",        emoji: "🛡️",  color: "#B9FBC0", desc: "Ensuring age-appropriate content…" },
+  { id: 3, label: "Building Quiz",          emoji: "🧩",  color: "#FFD8A8", desc: "Creating comprehension questions…" },
+  { id: 4, label: "Painting Illustration",  emoji: "🎨",  color: "#BFA7FF", desc: "Drawing one opening illustration for your story…" },
+  { id: 5, label: "Almost ready!",          emoji: "📖",  color: "#FFE66D", desc: "Your storybook is coming to life…" },
 ];
 
-const magicParticles = Array.from({ length: 20 }, (_, i) => ({
+// Module-level stable particles (avoids re-generating on re-render)
+const magicParticles = Array.from({ length: 18 }, (_, i) => ({
   id: i,
   x: Math.random() * 100,
   y: Math.random() * 100,
-  size: 8 + Math.random() * 16,
+  size: 8 + Math.random() * 14,
   delay: Math.random() * 3,
   dur: 3 + Math.random() * 4,
-  emoji: ["✨","⭐","💫","🌟"][Math.floor(Math.random() * 4)],
+  emoji: ["✨", "⭐", "💫", "🌟"][Math.floor(Math.random() * 4)],
 }));
 
 function OpeningBook() {
   return (
     <div className="relative w-48 h-40 mx-auto">
-      {/* Left page */}
       <motion.div
         initial={{ rotateY: 0 }}
         animate={{ rotateY: -45 }}
@@ -36,7 +41,6 @@ function OpeningBook() {
       >
         <div className="absolute inset-2 rounded-lg bg-white/20 flex items-center justify-center text-3xl">📖</div>
       </motion.div>
-      {/* Right page */}
       <motion.div
         initial={{ rotateY: 0 }}
         animate={{ rotateY: 45 }}
@@ -46,7 +50,6 @@ function OpeningBook() {
       >
         <div className="absolute inset-2 rounded-lg bg-white/20 flex items-center justify-center text-3xl">✨</div>
       </motion.div>
-      {/* Spine */}
       <div className="absolute left-1/2 -translate-x-1/2 top-0 w-3 h-full bg-gradient-to-b from-[#6CC6FF] to-[#BFA7FF] rounded-sm shadow-lg" />
     </div>
   );
@@ -54,21 +57,16 @@ function OpeningBook() {
 
 function CharacterSketch() {
   const parts = [
-    { d: "M80,40 Q80,20 96,20 Q112,20 112,40 Q112,60 96,60 Q80,60 80,40", delay: 0 },      // Head
-    { d: "M88,60 L88,100 M104,60 L104,100", delay: 0.3 },    // Body
-    { d: "M88,70 L72,85 M104,70 L120,85", delay: 0.6 },      // Arms
-    { d: "M88,100 L80,130 M104,100 L112,130", delay: 0.9 },  // Legs
+    { d: "M80,40 Q80,20 96,20 Q112,20 112,40 Q112,60 96,60 Q80,60 80,40", delay: 0 },
+    { d: "M88,60 L88,100 M104,60 L104,100", delay: 0.3 },
+    { d: "M88,70 L72,85 M104,70 L120,85", delay: 0.6 },
+    { d: "M88,100 L80,130 M104,100 L112,130", delay: 0.9 },
   ];
   return (
     <svg width="192" height="160" viewBox="0 0 192 160" className="mx-auto">
       {parts.map((p, i) => (
         <motion.path
-          key={i}
-          d={p.d}
-          fill="none"
-          stroke="#BFA7FF"
-          strokeWidth="3"
-          strokeLinecap="round"
+          key={i} d={p.d} fill="none" stroke="#BFA7FF" strokeWidth="3" strokeLinecap="round"
           initial={{ pathLength: 0, opacity: 0 }}
           animate={{ pathLength: 1, opacity: 1 }}
           transition={{ duration: 1, delay: p.delay, repeat: Infinity, repeatDelay: 2 }}
@@ -78,36 +76,144 @@ function CharacterSketch() {
   );
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// MAIN PAGE — performs real API calls and tracks progress
+// ─────────────────────────────────────────────────────────────────────────────
+
 export default function LoadingPage() {
-  const [currentStep, setCurrentStep] = React.useState(0);
-  const [progress, setProgress] = React.useState(0);
-  const [done, setDone] = React.useState(false);
+  const router = useRouter();
+
+  // Phase: 0=idle 1=story 2=image 3=done
+  const [phase,        setPhase]       = React.useState<0|1|2|3>(0);
+  const [currentStep,  setCurrentStep] = React.useState(0);
+  const [progress,     setProgress]    = React.useState(0);
+  const [error,        setError]       = React.useState<string | null>(null);
+
+  // Prevent double-run in React StrictMode double-effect
+  const started = React.useRef(false);
 
   React.useEffect(() => {
-    const totalDuration = 8000; // 8 s — story text arrives fast, cover image loads async
-    const stepDuration = totalDuration / steps.length;
+    if (started.current) return;
+    started.current = true;
 
-    const progressInterval = setInterval(() => {
-      setProgress((p) => {
-        if (p >= 100) { clearInterval(progressInterval); return 100; }
-        return p + (100 / (totalDuration / 100));
-      });
-    }, 100);
-
-    steps.forEach((_, i) => {
-      setTimeout(() => setCurrentStep(i), i * stepDuration);
-    });
-
-    setTimeout(() => {
-      setDone(true);
-      clearInterval(progressInterval);
-      setProgress(100);
-    }, totalDuration);
-
-    return () => clearInterval(progressInterval);
+    void run();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const remaining = Math.max(0, Math.round((100 - progress) / 100 * 8));
+  async function run() {
+    // ── 0. Read payload from sessionStorage ──────────────────────────────────
+    let payload: Record<string, unknown> & { heroDescription?: string; artStyle?: string; theme?: string } | null = null;
+    try {
+      const raw = typeof window !== "undefined" ? sessionStorage.getItem(STORY_PAYLOAD_SESSION_KEY) : null;
+      if (raw) payload = JSON.parse(raw);
+    } catch { /* ignore */ }
+
+    if (!payload) {
+      setError("No story payload found. Please go back and fill in the wizard.");
+      return;
+    }
+
+    // ── 1. Generate story text ────────────────────────────────────────────────
+    setPhase(1);
+    setCurrentStep(0);   // "Generating Story"
+    animateProgressTo(30);
+
+    let story: StoryResponse;
+    try {
+      const res = await fetch("/api/generate-story", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({})) as { detail?: { message?: string }; error?: string };
+        const msg = body?.detail?.message ?? body?.error ?? `Server error ${res.status}`;
+        throw new Error(msg);
+      }
+      story = await res.json() as StoryResponse;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Story generation failed. Please try again.");
+      return;
+    }
+
+    // Enrich with hero description / artStyle / theme from payload
+    const enrichedStory: StoryResponse = {
+      ...story,
+      heroDescription: payload.heroDescription as string ?? "a cheerful friendly cartoon character",
+      artStyle: (payload.artStyle as "color" | "sketch") ?? "color",
+      theme: payload.theme as string ?? "",
+    };
+
+    // ── 2. Checking safety / Building quiz (visual only — already done server-side) ──
+    setCurrentStep(1);   // "Checking Safety"
+    animateProgressTo(45);
+    await sleep(600);
+
+    setCurrentStep(2);   // "Building Quiz"
+    animateProgressTo(55);
+    await sleep(400);
+
+    // ── 3. Generate ONE story illustration from the whole-story context ───────
+    setPhase(2);
+    setCurrentStep(3);   // "Painting Illustration"
+    animateProgressTo(60);
+
+    try {
+      const storyImagePrompt = enrichedStory.storyImagePrompt ?? enrichedStory.title;
+      const heroDesc = enrichedStory.heroDescription ?? "a cheerful friendly cartoon character";
+
+      const imgRes = await fetch(`${FASTAPI_URL}/generate-story-image`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title:            enrichedStory.title,
+          storyImagePrompt: storyImagePrompt,
+          heroDescription:  heroDesc,
+          artStyle:         enrichedStory.artStyle ?? "color",
+          seed:             42,
+        }),
+      });
+      if (imgRes.ok) {
+        const imgData = await imgRes.json() as { imageUrl?: string };
+        if (imgData.imageUrl) {
+          enrichedStory.coverImageUrl = imgData.imageUrl;
+        }
+      }
+      // Image failure is non-fatal — continue to reader without illustration
+    } catch { /* non-fatal */ }
+
+    animateProgressTo(90);
+    setCurrentStep(4);   // "Almost ready!"
+
+    // ── 4. Persist enriched story and navigate ────────────────────────────────
+    try {
+      sessionStorage.setItem(STORY_SESSION_KEY, JSON.stringify(enrichedStory));
+    } catch { /* quota — non-fatal */ }
+
+    animateProgressTo(100);
+    await sleep(500);
+
+    setPhase(3);
+  }
+
+  // Navigate to reader once phase === 3
+  React.useEffect(() => {
+    if (phase === 3) {
+      router.push("/reader/1");
+    }
+  }, [phase, router]);
+
+  // Smooth progress bar animation
+  function animateProgressTo(target: number) {
+    setProgress((p) => (p < target ? target : p));
+  }
+
+  function sleep(ms: number) {
+    return new Promise<void>((r) => setTimeout(r, ms));
+  }
+
+  const isDone    = phase === 3;
+  const hasError  = error !== null;
 
   return (
     <div className="min-h-screen gradient-page flex flex-col items-center justify-center p-6 relative overflow-hidden">
@@ -138,102 +244,120 @@ export default function LoadingPage() {
             style={{ backgroundImage: "linear-gradient(135deg, #6CC6FF, #BFA7FF, #FFD8A8, #6CC6FF)", backgroundSize: "300%", backgroundClip: "text", WebkitBackgroundClip: "text", color: "transparent" }}
             transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
           >
-            {done ? "Your Story is Ready! 🎉" : "Crafting Your Story…"}
+            {isDone ? "Your Story is Ready! 🎉" : "Crafting Your Story…"}
           </motion.h1>
-          {!done && (
-            <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground font-body">
-              <Clock size={14} />
-              <span>~{remaining}s remaining</span>
-            </div>
+
+          {/* Illustration progress sub-label */}
+          {phase === 2 && !isDone && (
+            <p className="text-sm text-muted-foreground font-body">
+              Painting your story illustration…
+            </p>
           )}
         </div>
 
-        {/* Character sketch */}
-        {!done && (
+        {/* Character sketch — hidden during image phase to reduce noise */}
+        {!isDone && phase < 2 && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }}>
             <CharacterSketch />
           </motion.div>
         )}
 
-        {/* Progress bar */}
-        <div className="space-y-2">
-          <div className="h-3 w-full bg-muted rounded-full overflow-hidden">
-            <motion.div
-              className="h-full rounded-full"
-              style={{ background: "linear-gradient(90deg, #6CC6FF, #BFA7FF, #FFD8A8)" }}
-              animate={{ width: `${progress}%` }}
-              transition={{ duration: 0.5, ease: "easeOut" }}
-            />
-          </div>
-          <p className="text-xs text-muted-foreground font-body">{Math.round(progress)}% complete</p>
-        </div>
-
-        {/* Steps */}
-        <div className="space-y-3 text-left">
-          {steps.map((step, i) => {
-            const isActive = i === currentStep && !done;
-            const isDone = i < currentStep || done;
-            return (
-              <motion.div
-                key={step.id}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: i <= currentStep || done ? 1 : 0.3, x: 0 }}
-                transition={{ delay: i * 0.1 }}
-                className={`flex items-center gap-4 p-3 rounded-2xl transition-all duration-300 ${
-                  isActive ? "bg-primary/10 border border-primary/30" : "transparent"
-                }`}
-              >
-                <div
-                  className="w-10 h-10 rounded-full flex items-center justify-center text-lg shrink-0 shadow-sm"
-                  style={{ background: isDone ? "#B9FBC0" : isActive ? step.color : "transparent", border: `2px solid ${isDone ? "#B9FBC0" : step.color}` }}
-                >
-                  {isDone ? <CheckCircle2 size={18} className="text-[#1a5a2a]" /> : (
-                    isActive ? (
-                      <motion.span animate={{ rotate: [0, 20, -10, 20, 0] }} transition={{ duration: 0.8, repeat: Infinity }}>
-                        {step.emoji}
-                      </motion.span>
-                    ) : <span className="text-base">{step.emoji}</span>
-                  )}
-                </div>
-                <div className="min-w-0">
-                  <p className={`font-heading font-semibold text-sm ${isDone ? "line-through text-muted-foreground" : isActive ? "text-foreground" : "text-muted-foreground"}`}>
-                    {step.label}
-                  </p>
-                  {isActive && <p className="text-xs text-muted-foreground font-body">{step.desc}</p>}
-                </div>
-                {isActive && <motion.div className="ml-auto flex gap-1" animate={{}} >
-                  {[0,1,2].map((d) => (
-                    <motion.div key={d} className="w-1.5 h-1.5 rounded-full bg-primary"
-                      animate={{ scale: [1,1.5,1], opacity:[0.5,1,0.5] }}
-                      transition={{ duration: 0.8, repeat: Infinity, delay: d * 0.2 }} />
-                  ))}
-                </motion.div>}
-              </motion.div>
-            );
-          })}
-        </div>
-
-        {/* Done CTA */}
+        {/* Error state */}
         <AnimatePresence>
-          {done && (
+          {hasError && (
             <motion.div
-              initial={{ opacity: 0, scale: 0.8, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              transition={{ type: "spring", stiffness: 300, damping: 20 }}
-              className="space-y-3"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex items-start gap-3 rounded-2xl bg-destructive/10 border border-destructive/30 px-4 py-3 text-left"
             >
-              <Link href="/reader/1">
-                <button className="w-full h-14 rounded-2xl font-heading font-bold text-white text-lg shadow-xl hover:brightness-105 transition-all"
-                  style={{ background: "linear-gradient(135deg, #6CC6FF, #BFA7FF)" }}>
-                  📖 Read Your Story Now!
+              <AlertCircle size={18} className="text-destructive shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-heading font-semibold text-destructive">Something went wrong</p>
+                <p className="text-xs text-destructive/80 font-body mt-0.5">{error}</p>
+                <button
+                  className="mt-2 text-xs font-body underline text-destructive"
+                  onClick={() => router.push("/create/build")}
+                >
+                  ← Back to wizard
                 </button>
-              </Link>
-              <Link href="/quiz/1" className="block text-center text-sm text-muted-foreground hover:text-foreground transition-colors font-body">
-                Skip to Quiz instead →
-              </Link>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Progress bar */}
+        {!hasError && (
+          <div className="space-y-2">
+            <div className="h-3 w-full bg-muted rounded-full overflow-hidden">
+              <motion.div
+                className="h-full rounded-full"
+                style={{ background: "linear-gradient(90deg, #6CC6FF, #BFA7FF, #FFD8A8)" }}
+                animate={{ width: `${progress}%` }}
+                transition={{ duration: 0.8, ease: "easeOut" }}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground font-body">{Math.round(progress)}% complete</p>
+          </div>
+        )}
+
+        {/* Steps */}
+        {!hasError && (
+          <div className="space-y-3 text-left">
+            {STEPS.map((step, i) => {
+              const isActive = i === currentStep && !isDone;
+              const isStepDone = i < currentStep || isDone;
+              return (
+                <motion.div
+                  key={step.id}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: i <= currentStep || isDone ? 1 : 0.3, x: 0 }}
+                  transition={{ delay: i * 0.08 }}
+                  className={`flex items-center gap-4 p-3 rounded-2xl transition-all duration-300 ${
+                    isActive ? "bg-primary/10 border border-primary/30" : "transparent"
+                  }`}
+                >
+                  <div
+                    className="w-10 h-10 rounded-full flex items-center justify-center text-lg shrink-0 shadow-sm"
+                    style={{
+                      background: isStepDone ? "#B9FBC0" : isActive ? step.color : "transparent",
+                      border: `2px solid ${isStepDone ? "#B9FBC0" : step.color}`,
+                    }}
+                  >
+                    {isStepDone ? (
+                      <CheckCircle2 size={18} className="text-[#1a5a2a]" />
+                    ) : isActive ? (
+                      <motion.span animate={{ rotate: [0, 20, -10, 20, 0] }} transition={{ duration: 0.8, repeat: Infinity }}>
+                        {step.emoji}
+                      </motion.span>
+                    ) : (
+                      <span className="text-base">{step.emoji}</span>
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <p className={`font-heading font-semibold text-sm ${
+                      isStepDone ? "line-through text-muted-foreground" : isActive ? "text-foreground" : "text-muted-foreground"
+                    }`}>
+                      {step.label}
+                    </p>
+                    {isActive && (
+                      <p className="text-xs text-muted-foreground font-body">{step.desc}</p>
+                    )}
+                  </div>
+                  {isActive && (
+                    <motion.div className="ml-auto flex gap-1">
+                      {[0, 1, 2].map((d) => (
+                        <motion.div key={d} className="w-1.5 h-1.5 rounded-full bg-primary"
+                          animate={{ scale: [1, 1.5, 1], opacity: [0.5, 1, 0.5] }}
+                          transition={{ duration: 0.8, repeat: Infinity, delay: d * 0.2 }}
+                        />
+                      ))}
+                    </motion.div>
+                  )}
+                </motion.div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );

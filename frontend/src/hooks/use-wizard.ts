@@ -9,8 +9,8 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import type { StoryPayload, StoryResponse } from "@/lib/auth-types";
-import { STORY_SESSION_KEY, PHOTO_SESSION_KEY, STORY_PAYLOAD_SESSION_KEY } from "@/lib/auth-types";
+import type { StoryPayload } from "@/lib/auth-types";
+import { STORY_SESSION_KEY, PHOTO_SESSION_KEY, STORY_PAYLOAD_SESSION_KEY, CREATOR_NAME_SESSION_KEY } from "@/lib/auth-types";
 import { sanitizeInput } from "@/lib/auth-service";
 
 export interface WizardState {
@@ -22,6 +22,8 @@ export interface WizardState {
   theme: string;
   storyType: string;
   photoSketch: string | null;
+  /** Display name for the author credit footer. Session-only, never persisted. */
+  creatorName: string;
   length: "short" | "medium";
   artStyle: "sketch" | "color";
   ageLevel: "3-5" | "6-8" | "9-12";
@@ -37,13 +39,14 @@ const INITIAL: WizardState = {
   theme: "",
   storyType: "",
   photoSketch: null,
+  creatorName: "",
   length: "medium",
   artStyle: "color",
   ageLevel: "6-8",
   language: "English",
 };
 
-export const TOTAL_STEPS = 9;
+export const TOTAL_STEPS = 10;
 
 export function useWizard() {
   const router = useRouter();
@@ -80,6 +83,7 @@ export function useWizard() {
       theme:       sanitizeInput(state.theme),
       storyType:   sanitizeInput(state.storyType),
       photoSketch: state.photoSketch,                   // already a data URL / null
+      creatorName: sanitizeInput(state.creatorName, 80) || undefined,
       length:      state.length,
       artStyle:    state.artStyle,
       ageLevel:    state.ageLevel,
@@ -87,50 +91,44 @@ export function useWizard() {
     };
   }
 
-  /** POST to /api/generate-story, store result in sessionStorage, then navigate to /loading. */
+  /**
+   * Save the wizard payload to sessionStorage and navigate to /loading.
+   * The loading page handles the actual API calls (/generate-story and
+   * /generate-story-image) so it can show real progress and only redirect to
+   * the reader when everything is fully ready.
+   */
   async function submit(): Promise<void> {
     setSubmitting(true);
     setSubmitError(null);
     try {
       const payload = buildPayload();
-      const res = await fetch("/api/generate-story", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) {
-        const errBody = await res.json().catch(() => ({}));
-        throw new Error(
-          (errBody as { error?: string }).error ?? `Server error: ${res.status}`
-        );
-      }
-      const story = await res.json() as StoryResponse;
-      // Persist story for reader / quiz / vocabulary pages.
-      // heroDescription and artStyle are stashed here so the reader can pass
-      // them verbatim to POST /generate-images without re-deriving them.
       if (typeof window !== "undefined") {
+        // Compute the heroDescription here so the loading page can pass it
+        // straight to /generate-story-image without needing wizard state.
         const heroLabel = state.heroName
           ? `${state.heroName}, a ${state.heroType}`
           : `a ${state.heroType}`;
-        const enriched = {
-          ...story,
+        const enrichedPayload = {
+          ...payload,
           heroDescription: `${heroLabel}, cheerful friendly cartoon character with big round eyes`,
-          artStyle: state.artStyle,   // "color" | "sketch"
-          theme: state.theme,         // passed to reader for ambient animation
+          createdAt: new Date().toISOString(),
         };
-        sessionStorage.setItem(STORY_SESSION_KEY, JSON.stringify(enriched));
+        sessionStorage.setItem(STORY_PAYLOAD_SESSION_KEY, JSON.stringify(enrichedPayload));
         // Store parent photo separately so it doesn't bloat the story JSON.
-        // Uses sessionStorage (tab-only, never persisted) for privacy.
         if (state.photoSketch) {
           sessionStorage.setItem(PHOTO_SESSION_KEY, state.photoSketch);
         } else {
           sessionStorage.removeItem(PHOTO_SESSION_KEY);
         }
-        // Persist creation inputs for PDF metadata page
-        sessionStorage.setItem(
-          STORY_PAYLOAD_SESSION_KEY,
-          JSON.stringify({ ...payload, createdAt: new Date().toISOString() }),
-        );
+        // Store creator name for the author credit footer (session-only).
+        const cleanName = sanitizeInput(state.creatorName, 80);
+        if (cleanName) {
+          sessionStorage.setItem(CREATOR_NAME_SESSION_KEY, cleanName);
+        } else {
+          sessionStorage.removeItem(CREATOR_NAME_SESSION_KEY);
+        }
+        // Clear any previous story so the reader doesn't show stale data
+        sessionStorage.removeItem(STORY_SESSION_KEY);
       }
       setSubmitted(payload);
       router.push("/loading");

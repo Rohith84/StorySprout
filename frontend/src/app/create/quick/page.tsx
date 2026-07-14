@@ -19,8 +19,7 @@ import { Sparkles, ChevronLeft, ChevronRight, Loader2, AlertCircle } from "lucid
 import { GlassCard } from "@/components/ui/sprout-cards";
 import { SproutButton } from "@/components/ui/sprout-button";
 import { SproutBadge } from "@/components/ui/sprout-misc";
-import { STORY_SESSION_KEY, STORY_PAYLOAD_SESSION_KEY } from "@/lib/auth-types";
-import type { StoryResponse } from "@/lib/auth-types";
+import { STORY_SESSION_KEY, STORY_PAYLOAD_SESSION_KEY, PHOTO_SESSION_KEY, CREATOR_NAME_SESSION_KEY } from "@/lib/auth-types";
 import { sanitizeInput } from "@/lib/auth-service";
 
 /* ── data ────────────────────────────────────────────────── */
@@ -48,6 +47,7 @@ const LANGUAGES = [
   { id: "Mandarin Chinese", label: "Mandarin Chinese", emoji: "🇨🇳" },
   { id: "French",           label: "French",           emoji: "🇫🇷" },
   { id: "Arabic",           label: "Arabic",           emoji: "🇸🇦" },
+  { id: "Indonesian",       label: "Indonesian",       emoji: "🇮🇩" },
 ] as const;
 
 const ART_STYLES = [
@@ -280,13 +280,14 @@ export default function QuickCreatePage() {
   function next() { setDirection(1); setStep((s) => s + 1); }
   function back() { setDirection(-1); setStep((s) => Math.max(0, s - 1)); }
 
-  async function handleSubmit() {
+  function handleSubmit() {
     setSubmitting(true);
     setError(null);
     try {
+      const heroName = sanitizeInput(nickname, 60);
       const payload = {
         heroType:    "child",
-        heroName:    sanitizeInput(nickname, 60),
+        heroName,
         incident:    "everyday",
         lesson:      "brave",
         moral:       "believe",
@@ -296,25 +297,21 @@ export default function QuickCreatePage() {
         length:      "short" as const,
         artStyle:    artStyle as "sketch" | "color",
         ageLevel:    ageLevel as "3-5" | "6-8" | "9-12",
-        language:    sanitizeInput(language),
+        language:    sanitizeInput(language) || "English",
       };
-      const res = await fetch("/api/generate-story", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) {
-        const errBody = await res.json().catch(() => ({}));
-        throw new Error((errBody as { error?: string }).error ?? `Server error: ${res.status}`);
-      }
-      const story = await res.json() as StoryResponse;
       if (typeof window !== "undefined") {
-        sessionStorage.setItem(STORY_SESSION_KEY, JSON.stringify(story));
-        // Persist creation inputs for PDF metadata page
-        sessionStorage.setItem(
-          STORY_PAYLOAD_SESSION_KEY,
-          JSON.stringify({ ...payload, createdAt: new Date().toISOString() }),
-        );
+        const heroLabel = heroName ? `${heroName}, a child` : "a child";
+        const enrichedPayload = {
+          ...payload,
+          heroDescription: `${heroLabel}, cheerful friendly cartoon character with big round eyes`,
+          createdAt: new Date().toISOString(),
+        };
+        sessionStorage.setItem(STORY_PAYLOAD_SESSION_KEY, JSON.stringify(enrichedPayload));
+        // Quick mode never collects a photo or creator name, so always clear
+        // any values left over from a previous Family Memory session.
+        sessionStorage.removeItem(PHOTO_SESSION_KEY);
+        sessionStorage.removeItem(CREATOR_NAME_SESSION_KEY);
+        sessionStorage.removeItem(STORY_SESSION_KEY);
       }
       router.push("/loading");
     } catch (err) {

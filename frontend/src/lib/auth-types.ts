@@ -61,6 +61,11 @@ export interface StoryPayload {
   storyType: string;
   /** Base-64 data URL of the sketch preview, or null. */
   photoSketch: string | null;
+  /**
+   * Optional display name for the author credit footer.
+   * Session-only — never persisted to DB.
+   */
+  creatorName?: string;
   length: "short" | "medium";
   artStyle: "sketch" | "color";
   ageLevel: "3-5" | "6-8" | "9-12";
@@ -78,11 +83,10 @@ export interface StoryPayload {
 export interface StoryPage {
   pageNumber: number;
   text: string;
-  imagePrompt: string;
-  /** URL of the generated illustration, set after /generate-images completes. */
+  /** @deprecated Per-page imagePrompt removed; storyImagePrompt is now at the root level. */
+  imagePrompt?: string;
+  /** @deprecated Per-page imageUrl no longer populated; use StoryResponse.coverImageUrl instead. */
   imageUrl?: string;
-  /** Visual keywords extracted by Granite for this page. */
-  keywords?: string[];
 }
 
 /** A single quiz question returned by the story generation API. */
@@ -101,6 +105,11 @@ export interface VocabularyItem {
 /** Full story response shape returned by POST /api/generate-story. */
 export interface StoryResponse {
   title: string;
+  /**
+   * Granite-generated 12-18 word English scene description for the whole story.
+   * Passed to POST /generate-story-image during loading to produce the single illustration.
+   */
+  storyImagePrompt?: string;
   pages: StoryPage[];
   quiz: QuizQuestion[];
   vocabulary: VocabularyItem[];
@@ -108,13 +117,12 @@ export interface StoryResponse {
   _fact_checked?: boolean;
   /**
    * Enriched client-side — set by use-wizard before sessionStorage write.
-   * Plain-English character description kept identical on every page
-   * so Pollinations renders a consistent character across illustrations.
+   * Plain-English character description used to build the story illustration prompt.
    */
   heroDescription?: string;
   /**
    * Enriched client-side — the wizard's artStyle choice ("color" | "sketch").
-   * Passed through to POST /generate-images so the right style suffix is used.
+   * Passed through to POST /generate-story-image so the right style suffix is used.
    */
   artStyle?: "color" | "sketch";
   /**
@@ -124,8 +132,8 @@ export interface StoryResponse {
    */
   theme?: string;
   /**
-   * Set after /generate-cover-image completes.
-   * A single cover illustration URL representing the whole story.
+   * Set by the loading page after POST /generate-story-image completes.
+   * A single illustration URL representing the whole story, shown on page 1 only.
    */
   coverImageUrl?: string;
 }
@@ -138,6 +146,12 @@ export const STORY_SESSION_KEY = "sprout_current_story";
  * to the reader's credit page. Tab-local only — never persisted to any DB.
  */
 export const PHOTO_SESSION_KEY = "sprout_creator_photo";
+
+/**
+ * sessionStorage key used to pass the creator's display name to the reader
+ * for the author credit footer. Session-only — never persisted to any DB.
+ */
+export const CREATOR_NAME_SESSION_KEY = "sprout_creator_name";
 
 /** sessionStorage key used to pass the story creation inputs to the PDF generator. */
 export const STORY_PAYLOAD_SESSION_KEY = "sprout_story_payload";
@@ -152,4 +166,10 @@ export interface StoredPayload extends StoryPayload {
   createdAt: string;
   /** Story language — present for Quick mode, absent for Build mode. */
   language?: string;
+  /**
+   * Pre-computed hero description added by the wizard before navigating to /loading.
+   * Format: "<heroName>, a <heroType>, cheerful friendly cartoon character…"
+   * Used by the loading page to pass to /generate-story-image without needing wizard state.
+   */
+  heroDescription?: string;
 }

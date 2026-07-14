@@ -10,7 +10,7 @@ import {
 import { SproutButton } from "@/components/ui/sprout-button";
 import { SproutBadge } from "@/components/ui/sprout-misc";
 import type { StoryResponse } from "@/lib/auth-types";
-import { STORY_SESSION_KEY, PHOTO_SESSION_KEY } from "@/lib/auth-types";
+import { STORY_SESSION_KEY, PHOTO_SESSION_KEY, CREATOR_NAME_SESSION_KEY } from "@/lib/auth-types";
 import { GRADIENTS, ILLUSTRATIONS } from "@/lib/story-constants";
 
 const FASTAPI_URL = process.env.NEXT_PUBLIC_FASTAPI_URL ?? "http://localhost:8000";
@@ -264,30 +264,22 @@ function useStoryData() {
   const [storyTitle,     setStoryTitle]     = React.useState("My Story");
   const [storyTheme,     setStoryTheme]     = React.useState<string | undefined>(undefined);
   const [factChecked,    setFactChecked]    = React.useState(false);
+  // coverImageUrl is pre-loaded by the loading page and stored in sessionStorage.
+  // coverLoading stays false — we no longer do a lazy fetch here.
   const [coverImageUrl,  setCoverImageUrl]  = React.useState<string | null>(null);
-  const [coverLoading,   setCoverLoading]   = React.useState(false);
+  const coverLoading = false;
   const [parentPhotoUrl, setParentPhotoUrl] = React.useState<string | null>(null);
-  const [sketchUrl,      setSketchUrl]      = React.useState<string | null>(null);
-  const [sketchLoading,  setSketchLoading]  = React.useState(false);
+  const [creatorName,    setCreatorName]    = React.useState<string | null>(null);
 
   React.useEffect(() => {
     if (typeof window === "undefined") return;
 
-    // 1. Creator photo (privacy: stays in sessionStorage, never sent to server)
+    // 1. Creator photo + name (privacy: stays in sessionStorage, never sent to server)
     const savedPhoto = sessionStorage.getItem(PHOTO_SESSION_KEY);
+    const savedName  = sessionStorage.getItem(CREATOR_NAME_SESSION_KEY);
     if (savedPhoto) {
       setParentPhotoUrl(savedPhoto);
-      setSketchLoading(true);
-      const sketchPrompt = encodeURIComponent(
-        "soft pencil sketch portrait, warm gentle drawing, delicate line art, " +
-        "children's book author illustration, cozy and loving, sepia tones, " +
-        "simple clean lines, no background clutter, hand-drawn feel"
-      );
-      const sketchImgUrl = `https://image.pollinations.ai/prompt/${sketchPrompt}?width=512&height=512&seed=7&nologo=true&model=flux`;
-      const img = new Image();
-      img.onload  = () => { setSketchUrl(sketchImgUrl); setSketchLoading(false); };
-      img.onerror = () => setSketchLoading(false);
-      img.src = sketchImgUrl;
+      if (savedName) setCreatorName(savedName);
     }
 
     // 2. Story
@@ -303,75 +295,23 @@ function useStoryData() {
     setStoryTheme(story.theme);
     setFactChecked(story._fact_checked === true);
 
+    // Pages carry text only — no per-page imageUrl any more.
     const basePages: ReaderPage[] = story.pages.map((p) => ({
       pageNum:      p.pageNumber,
       text:         p.text,
-      imageUrl:     p.imageUrl ?? "",
-      imageLoading: !(p.imageUrl),
+      imageUrl:     "",
+      imageLoading: false,
     }));
     setPages(basePages);
 
-    // 3. Cover image
+    // 3. Single story illustration — pre-loaded by the loading page.
     if (story.coverImageUrl) {
       setCoverImageUrl(story.coverImageUrl);
-    } else {
-      const heroDesc    = story.heroDescription ?? "a cheerful friendly cartoon character";
-      const firstPrompt = story.pages[0]?.imagePrompt ?? "";
-      const storyPrompt = firstPrompt ? `${heroDesc}, ${firstPrompt}` : `${heroDesc}, ${story.title}`;
-      setCoverLoading(true);
-      fetch(`${FASTAPI_URL}/generate-cover-image`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ storyPrompt, artStyle: story.artStyle ?? "color", seed: 42 }),
-      })
-        .then((r) => r.json())
-        .then((d: { imageUrl?: string }) => {
-          if (!d.imageUrl) return;
-          setCoverImageUrl(d.imageUrl);
-          try {
-            sessionStorage.setItem(STORY_SESSION_KEY, JSON.stringify({ ...story, coverImageUrl: d.imageUrl }));
-          } catch { /* quota */ }
-        })
-        .catch(console.error)
-        .finally(() => setCoverLoading(false));
     }
-
-    // 4. Per-page images (non-blocking)
-    const need = story.pages.filter((p) => !p.imageUrl);
-    if (!need.length) return;
-    fetch(`${FASTAPI_URL}/generate-images`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        pages: need.map((p) => ({ pageNumber: p.pageNumber, text: p.text })),
-        characterDescription: story.heroDescription ?? "a cheerful friendly cartoon character",
-        artStyle: story.artStyle ?? "color",
-        seed: 42,
-      }),
-    })
-      .then((r) => r.json())
-      .then((d: { pages?: { pageNumber: number; imageUrl: string }[] }) => {
-        if (!d.pages?.length) return;
-        const urlMap: Record<number, string> = {};
-        d.pages.forEach((p) => { if (p.imageUrl) urlMap[p.pageNumber] = p.imageUrl; });
-        setPages((prev) =>
-          prev.map((p) => urlMap[p.pageNum]
-            ? { ...p, imageUrl: urlMap[p.pageNum], imageLoading: false }
-            : { ...p, imageLoading: false }
-          )
-        );
-        try {
-          const updatedPages = story.pages.map((sp) =>
-            urlMap[sp.pageNumber] ? { ...sp, imageUrl: urlMap[sp.pageNumber] } : sp
-          );
-          sessionStorage.setItem(STORY_SESSION_KEY, JSON.stringify({ ...story, pages: updatedPages }));
-        } catch { /* quota */ }
-      })
-      .catch(console.error);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  return { pages, storyTitle, storyTheme, factChecked, coverImageUrl, coverLoading, parentPhotoUrl, sketchUrl, sketchLoading };
+  return { pages, storyTitle, storyTheme, factChecked, coverImageUrl, coverLoading, parentPhotoUrl, creatorName };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -471,12 +411,13 @@ function BookPageFace({
 
   return (
     <div
-      className="relative flex flex-col h-full overflow-hidden"
+      className="relative flex flex-col overflow-hidden h-full"
       style={{
         background:      paperBg,
         backgroundImage: PAPER_GRAIN,
         backgroundBlendMode: "multiply",
         boxShadow:       spineShadow,
+        minHeight:       "52vh",
       }}
     >
       {/* Floating theme icons — margin decorations */}
@@ -523,10 +464,9 @@ function BookPageFace({
         </div>
       </div>
 
-      {/* Illustration */}
-      <div className="relative px-5 pt-4 shrink-0">
-        {isFirst ? (
-          /* Cover image on page 1 */
+      {/* Illustration — shown only on the first page */}
+      {isFirst && (
+        <div className="relative px-5 pt-4 shrink-0">
           <div
             className="relative w-full rounded-xl overflow-hidden shadow-sm"
             style={{ aspectRatio: "16/7" }}
@@ -536,7 +476,7 @@ function BookPageFace({
                 <motion.img
                   key="cover"
                   src={`${FASTAPI_URL}${coverImageUrl}`}
-                  alt={`Cover illustration for ${storyTitle}`}
+                  alt={`Opening illustration for ${storyTitle}`}
                   className="w-full h-full object-cover"
                   initial={{ opacity: 0, scale: 1.04 }}
                   animate={{ opacity: 1, scale: 1 }}
@@ -558,24 +498,17 @@ function BookPageFace({
                     📖
                   </motion.span>
                   {coverLoading && (
-                    <p className="text-xs font-body text-white/60">Painting your cover…</p>
+                    <p className="text-xs font-body text-white/60">Loading illustration…</p>
                   )}
                 </motion.div>
               )}
             </AnimatePresence>
           </div>
-        ) : (
-          <PageImage
-            imageUrl={page.imageUrl}
-            imageLoading={page.imageLoading}
-            tint={tint}
-            altText={`Illustration for page ${page.pageNum}`}
-          />
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Story text */}
-      <div className="relative flex-1 overflow-y-auto px-5 pt-4 pb-5">
+      <div className="relative px-5 pt-4 pb-5">
         <motion.p
           key={page.pageNum}
           initial={{ opacity: 0, y: 6 }}
@@ -628,11 +561,10 @@ function BookPageFace({
 // ─────────────────────────────────────────────────────────────────────────────
 
 function CreditPageFace({
-  parentPhotoUrl, sketchUrl, sketchLoading, storyTitle, darkMode, side,
+  parentPhotoUrl, creatorName, storyTitle, darkMode, side,
 }: {
   parentPhotoUrl: string | null;
-  sketchUrl:      string | null;
-  sketchLoading:  boolean;
+  creatorName:    string | null;
   storyTitle:     string;
   darkMode:       boolean;
   side:           "left" | "right" | "single";
@@ -644,14 +576,20 @@ function CreditPageFace({
     ? "inset -18px 0 28px -12px rgba(0,0,0,0.10)"
     : "none";
 
+  // Warm pencil-sketch CSS filter applied to the creator's actual photo.
+  // No external API call — photo stays entirely in the browser.
+  const SKETCH_FILTER =
+    "grayscale(100%) brightness(1.15) contrast(1.75) sepia(28%)";
+
   return (
     <div
-      className="relative flex flex-col items-center justify-center gap-5 h-full px-8 py-10 text-center overflow-hidden"
+      className="relative flex flex-col items-center justify-center gap-5 px-8 py-10 text-center overflow-hidden"
       style={{
         background:          paperBg,
         backgroundImage:     PAPER_GRAIN,
         backgroundBlendMode: "multiply",
         boxShadow:           spineShadow,
+        minHeight:           "52vh",
       }}
     >
       {/* Corner flourishes */}
@@ -662,58 +600,49 @@ function CreditPageFace({
         </div>
       ))}
 
+      {/* ── Author credit (only rendered when a photo was uploaded) ── */}
       {parentPhotoUrl && (
-        <div className="relative">
-          <AnimatePresence mode="wait">
-            {sketchLoading ? (
-              <motion.div key="sl"
-                className="w-32 h-32 rounded-full flex items-center justify-center"
-                style={{ background: "#F5ECD7", border: "2.5px dashed #C4956A50" }}
-                initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                <motion.span
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
-                  style={{ fontSize: 24 }}
-                >✏️</motion.span>
-              </motion.div>
-            ) : sketchUrl ? (
-              <motion.div key="sd"
-                className="relative w-32 h-32 rounded-full overflow-hidden shadow-md"
-                style={{ border: "2.5px solid #C4956A44" }}
-                initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.8 }}
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={parentPhotoUrl} alt="Story creator"
-                  className="absolute inset-0 w-full h-full object-cover"
-                  style={{ filter: "sepia(60%) brightness(1.1) contrast(0.85)" }} />
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={sketchUrl} alt="" aria-hidden
-                  className="absolute inset-0 w-full h-full object-cover mix-blend-multiply opacity-55" />
-                <div className="absolute inset-0 rounded-full"
-                  style={{ background: "radial-gradient(ellipse at center,transparent 50%,rgba(160,100,40,0.22) 100%)" }} />
-              </motion.div>
-            ) : (
-              <motion.div key="sf"
-                className="w-32 h-32 rounded-full overflow-hidden shadow-md"
-                style={{ border: "2.5px solid #C4956A44" }}
-                initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={parentPhotoUrl} alt="Story creator"
-                  className="w-full h-full object-cover"
-                  style={{ filter: "sepia(50%) brightness(1.15) contrast(0.9)" }} />
-              </motion.div>
-            )}
-          </AnimatePresence>
-          <motion.div
-            className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full flex items-center justify-center shadow"
-            style={{ background: "#FFB6C1", fontSize: 14 }}
-            animate={{ scale: [1, 1.12, 1] }}
-            transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
-            aria-hidden
-          >💛</motion.div>
-        </div>
+        <motion.div
+          className="flex flex-col items-center gap-3"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2, duration: 0.7 }}
+        >
+          {/* Thumbnail portrait in sketch style */}
+          <div
+            className="relative rounded-full overflow-hidden shadow-md shrink-0"
+            style={{
+              width: 96, height: 96,
+              border: "2.5px solid",
+              borderColor: darkMode ? "rgba(255,216,168,0.35)" : "#C4956A55",
+            }}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={parentPhotoUrl}
+              alt="Story creator"
+              className="w-full h-full object-cover"
+              style={{ filter: SKETCH_FILTER }}
+            />
+            {/* Subtle vignette overlay */}
+            <div
+              className="absolute inset-0 rounded-full pointer-events-none"
+              style={{ background: "radial-gradient(ellipse at center,transparent 55%,rgba(150,90,30,0.18) 100%)" }}
+            />
+          </div>
+
+          {/* Warm credit text */}
+          <div className="space-y-0.5">
+            <p
+              className="font-heading font-semibold text-xs leading-snug"
+              style={{ color: darkMode ? "rgba(255,255,255,0.55)" : "#8C5A30" }}
+            >
+              {creatorName
+                ? `Written with love by ${creatorName}`
+                : "A story created with love"}
+            </p>
+          </div>
+        </motion.div>
       )}
 
       <motion.p
@@ -736,14 +665,21 @@ function CreditPageFace({
           style={{ color: darkMode ? "rgba(255,255,255,0.82)" : "#5A2E05" }}>
           {`"${storyTitle}"`}
         </p>
-        <p className="font-body text-xs leading-relaxed max-w-[18ch] mx-auto"
-          style={{ color: darkMode ? "rgba(255,255,255,0.5)" : "#8C5A30" }}>
-          A story imagined and shared with love.
-        </p>
-        <p className="font-body text-[11px]"
-          style={{ color: darkMode ? "rgba(255,255,255,0.3)" : "#A07050" }}>
-          Made with StorySprout 🌱
-        </p>
+        {/* Only show the generic tagline + branding when the creator did NOT
+            upload a photo. When a photo is present the author credit above
+            already personalises the page, so these lines would be redundant. */}
+        {!parentPhotoUrl && (
+          <>
+            <p className="font-body text-xs leading-relaxed max-w-[18ch] mx-auto"
+              style={{ color: darkMode ? "rgba(255,255,255,0.5)" : "#8C5A30" }}>
+              A story imagined and shared with love.
+            </p>
+            <p className="font-body text-[11px]"
+              style={{ color: darkMode ? "rgba(255,255,255,0.3)" : "#A07050" }}>
+              Made with StorySprout 🌱
+            </p>
+          </>
+        )}
       </motion.div>
 
       <div className="flex items-center gap-3 w-full max-w-[14rem] opacity-25">
@@ -779,19 +715,25 @@ function OpenBook({
     : "0 28px 56px rgba(100,60,0,0.22), 0 6px 20px rgba(100,60,0,0.14)";
 
   return (
-    /* Desktop: open book — two pages side by side */
+    /* Desktop: open book — two pages side by side.
+       CSS grid stretches both columns to the same row height automatically.
+       `align-items: stretch` (the default) ensures both page wrappers fill the
+       full grid height so the two facing pages are always the same height. */
     <div
-      className="hidden md:flex relative rounded-2xl overflow-hidden"
+      className="hidden md:grid relative rounded-2xl overflow-hidden"
       style={{
+        gridTemplateColumns: "1fr 18px 1fr",
+        alignItems: "stretch",
         boxShadow:       bookShadow,
         border:          darkMode ? "1px solid rgba(255,255,255,0.06)" : "1px solid rgba(160,100,0,0.18)",
         backgroundColor: coverBg,
+        minHeight: "52vh",
       }}
     >
       {/* Left page */}
-      <div className="flex-1 relative" style={{ minHeight: "72vh", maxHeight: "82vh" }}>
+      <div className="relative flex flex-col">
         {leftContent}
-        {/* Page-edge curl hint: tiny gradient on outer-left */}
+        {/* Page-edge curl hint */}
         <div className="absolute top-0 left-0 bottom-0 w-3 pointer-events-none"
           style={{ background: darkMode
             ? "linear-gradient(to right,rgba(0,0,0,0.18),transparent)"
@@ -799,13 +741,10 @@ function OpenBook({
       </div>
 
       {/* Centre spine */}
-      <div className="relative z-10 flex-shrink-0 w-[18px] pointer-events-none" style={{ minHeight: "72vh" }}>
-        {/* Spine crease gradient */}
+      <div className="relative z-10 pointer-events-none">
         <div className="absolute inset-0" style={{ background: spineBg }} />
-        {/* Subtle vertical line */}
         <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-px"
           style={{ background: darkMode ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.10)" }} />
-        {/* Top/bottom stitch dots */}
         {[8, 20, 32, 44, 56, 68, 80, 92].map((pct) => (
           <div key={pct}
             className="absolute left-1/2 -translate-x-1/2 w-1 h-1 rounded-full"
@@ -815,9 +754,9 @@ function OpenBook({
       </div>
 
       {/* Right page */}
-      <div className="flex-1 relative" style={{ minHeight: "72vh", maxHeight: "82vh" }}>
+      <div className="relative flex flex-col">
         {rightContent}
-        {/* Page-edge curl hint: tiny gradient on outer-right */}
+        {/* Page-edge curl hint */}
         <div className="absolute top-0 right-0 bottom-0 w-3 pointer-events-none"
           style={{ background: darkMode
             ? "linear-gradient(to left,rgba(0,0,0,0.18),transparent)"
@@ -900,7 +839,7 @@ export default function ReaderPage() {
   const {
     pages, storyTitle, storyTheme, factChecked,
     coverImageUrl, coverLoading,
-    parentPhotoUrl, sketchUrl, sketchLoading,
+    parentPhotoUrl, creatorName,
   } = useStoryData();
 
   const hasCreditPage  = !!parentPhotoUrl;
@@ -913,6 +852,17 @@ export default function ReaderPage() {
   const [darkMode,   setDarkMode]   = React.useState(false);
   const [narrating,  setNarrating]  = React.useState(false);
   const utteranceRef = React.useRef<SpeechSynthesisUtterance | null>(null);
+
+  const [isDesktop,  setIsDesktop]  = React.useState(false);
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    const media = window.matchMedia("(min-width: 768px)");
+    setIsDesktop(media.matches);
+    const listener = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
+    media.addEventListener("change", listener);
+    return () => media.removeEventListener("change", listener);
+  }, []);
 
   const isCreditPage = hasCreditPage && current === totalPageCount - 1;
   const storyPage    = !isCreditPage ? pages[Math.min(current, pages.length - 1)] : null;
@@ -949,11 +899,31 @@ export default function ReaderPage() {
   }, [current]);
 
   // ── Navigation ─────────────────────────────────────────────────────────────
+  // On desktop the reader shows a two-page spread where the left page is always
+  // an even index and the right is odd.  `current` tracks the LEFT (even) page
+  // of the visible spread, so every nav step moves by exactly 2.
+  // On mobile we show one page at a time and step by 1.
   function goNext() {
-    if (current < totalPageCount - 1) { setDirection(1);  setCurrent((c) => c + 1); }
+    if (current >= totalPageCount - 1) return;
+    setDirection(1);
+    if (isDesktop) {
+      // Snap to the next even-aligned spread
+      const nextLeft = current % 2 === 0 ? current + 2 : current + 1;
+      setCurrent(Math.min(totalPageCount - 1, nextLeft));
+    } else {
+      setCurrent((c) => Math.min(totalPageCount - 1, c + 1));
+    }
   }
   function goPrev() {
-    if (current > 0)                   { setDirection(-1); setCurrent((c) => c - 1); }
+    if (current <= 0) return;
+    setDirection(-1);
+    if (isDesktop) {
+      // Snap to the previous even-aligned spread
+      const prevLeft = current % 2 === 0 ? current - 2 : current - 1;
+      setCurrent(Math.max(0, prevLeft));
+    } else {
+      setCurrent((c) => Math.max(0, c - 1));
+    }
   }
   function toggleBookmark() {
     setBookmarked((b) => { const n = new Set(b); n.has(current) ? n.delete(current) : n.add(current); return n; });
@@ -997,8 +967,7 @@ export default function ReaderPage() {
       return (
         <CreditPageFace
           parentPhotoUrl={parentPhotoUrl}
-          sketchUrl={sketchUrl}
-          sketchLoading={sketchLoading}
+          creatorName={creatorName}
           storyTitle={storyTitle}
           darkMode={darkMode}
           side={side}
@@ -1177,24 +1146,33 @@ export default function ReaderPage() {
 
           {/* Page dots */}
           <div className="flex gap-1.5 flex-wrap justify-center max-w-[200px]">
-            {Array.from({ length: totalPageCount }).map((_, i) => (
-              <motion.button
-                key={i}
-                whileHover={{ scale: 1.35 }}
-                onClick={() => { setDirection(i > current ? 1 : -1); setCurrent(i); }}
-                className="rounded-full transition-all"
-                style={{
-                  width:      i === current ? 22 : 10,
-                  height:     10,
-                  background: i === current
-                    ? "#C87533"
-                    : bookmarked.has(i)
-                    ? "#FFE066"
-                    : darkMode ? "rgba(255,255,255,0.20)" : "rgba(160,100,40,0.28)",
-                }}
-                aria-label={`Go to page ${i + 1}`}
-              />
-            ))}
+            {Array.from({ length: totalPageCount }).map((_, i) => {
+              const isActive = isDesktop ? (i === leftIdx || i === rightIdx) : i === current;
+              return (
+                <motion.button
+                  key={i}
+                  whileHover={{ scale: 1.35 }}
+                  onClick={() => {
+                    // On desktop always snap to even-aligned spread start
+                    const target = isDesktop ? i - (i % 2) : i;
+                    if (target === current) return;
+                    setDirection(target > current ? 1 : -1);
+                    setCurrent(target);
+                  }}
+                  className="rounded-full transition-all"
+                  style={{
+                    width:      isActive ? 22 : 10,
+                    height:     10,
+                    background: isActive
+                      ? "#C87533"
+                      : bookmarked.has(i)
+                      ? "#FFE066"
+                      : darkMode ? "rgba(255,255,255,0.20)" : "rgba(160,100,40,0.28)",
+                  }}
+                  aria-label={`Go to page ${i + 1}`}
+                />
+              );
+            })}
           </div>
 
           <motion.button

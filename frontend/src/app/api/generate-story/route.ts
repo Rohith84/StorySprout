@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 
 const FASTAPI_URL = process.env.FASTAPI_URL ?? "http://localhost:8000";
 
+// Story generation can take 30-90 s for LLM + safety-check + optional fact-check.
+// Node's default fetch has no timeout; set an explicit 3-minute AbortSignal so the
+// route handler never hangs indefinitely.
+const GENERATION_TIMEOUT_MS = 180_000;
+
 /**
  * POST /api/generate-story
  *
@@ -26,6 +31,7 @@ export async function POST(request: NextRequest) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
+      signal: AbortSignal.timeout(GENERATION_TIMEOUT_MS),
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Could not reach story generation service.";

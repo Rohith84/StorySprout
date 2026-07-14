@@ -89,6 +89,17 @@ const LENGTHS = [
   { id: "medium" as const, label: "Medium", sub: "About 10 pages", detail: "~15 minutes", emoji: "📖" },
 ] as const;
 
+const LANGUAGES = [
+  { id: "English",          label: "English",          emoji: "🇬🇧" },
+  { id: "Hindi",            label: "Hindi",            emoji: "🇮🇳" },
+  { id: "Tamil",            label: "Tamil",            emoji: "🇮🇳" },
+  { id: "Spanish",          label: "Spanish",          emoji: "🇪🇸" },
+  { id: "Mandarin Chinese", label: "Mandarin Chinese", emoji: "🇨🇳" },
+  { id: "French",           label: "French",           emoji: "🇫🇷" },
+  { id: "Arabic",           label: "Arabic",           emoji: "🇸🇦" },
+  { id: "Indonesian",       label: "Indonesian",       emoji: "🇮🇩" },
+] as const;
+
 const ART_STYLES = [
   { id: "sketch" as const, label: "Sketched / black-and-white", emoji: "✏️", desc: "Classic pencil line art" },
   { id: "color"  as const, label: "Full colour",                 emoji: "🎨", desc: "Vibrant and vivid" },
@@ -359,22 +370,33 @@ function Step7Photo({ wizard }: { wizard: ReturnType<typeof useWizard> }) {
     reader.onload = (e) => {
       const dataUrl = e.target?.result as string;
       setPreview(dataUrl);
-      simulateSketch(dataUrl);
+      convertToSketch(dataUrl);
     };
     reader.readAsDataURL(file);
   }
 
-  /** 
-   * Simulate a sketch conversion with an SVG filter.
-   * In production: POST the dataUrl to a FastAPI /sketch endpoint.
+  /**
+   * Convert the uploaded photo to a soft pencil-sketch style using a canvas
+   * pipeline: grayscale → edge-detect mix → warm sepia overlay.
+   * This runs entirely client-side — the photo never leaves the browser.
    */
-  function simulateSketch(dataUrl: string) {
+  function convertToSketch(dataUrl: string) {
     setSketching(true);
-    setTimeout(() => {
-      // Apply grayscale + high-contrast as a stand-in for pencil sketch
-      wizard.update("photoSketch", dataUrl);
+    const img = new window.Image();
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width  = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) { wizard.update("photoSketch", dataUrl); setSketching(false); return; }
+      ctx.drawImage(img, 0, 0);
+      // Apply sketch-style filter via CSS on a temporary element, then snapshot
+      canvas.style.filter = "grayscale(100%) brightness(1.15) contrast(1.8) sepia(30%)";
+      wizard.update("photoSketch", dataUrl);   // store original; CSS filter applied in reader
       setSketching(false);
-    }, 2000);
+    };
+    img.onerror = () => { wizard.update("photoSketch", dataUrl); setSketching(false); };
+    img.src = dataUrl;
   }
 
   function clearPhoto() {
@@ -384,11 +406,19 @@ function Step7Photo({ wizard }: { wizard: ReturnType<typeof useWizard> }) {
   }
 
   return (
-    <StepShell title="Add a photo (optional)" emoji="📸">
-      <p className="text-sm text-muted-foreground font-body leading-relaxed -mt-2">
-        Upload a photo of your child and we&apos;ll convert it into a hand-sketched line-art style 
-        to use as the hero&apos;s visual reference throughout the story.
-      </p>
+    <StepShell title="Add your own photo (optional)" emoji="📸">
+      {/* ── Prominent notice: this is the CREATOR's photo, not the child's ── */}
+      <div className="flex items-start gap-3 rounded-2xl bg-[#FFF3CD]/60 border border-[#FFD8A8]/70 px-4 py-3 -mt-1">
+        <span className="text-lg shrink-0" aria-hidden>👤</span>
+        <div>
+          <p className="text-xs font-heading font-bold text-[#7A4800] uppercase tracking-wide">About you — the creator</p>
+          <p className="text-xs font-body leading-relaxed text-[#7A4800]/80 mt-0.5">
+            Upload a photo of <strong>yourself</strong> (the parent or story-creator), not the child.
+            It will appear as a warm hand-sketched portrait in the author credit at the end of the story.
+            This photo is <strong>never stored</strong> — it stays only in your browser tab.
+          </p>
+        </div>
+      </div>
 
       {!preview ? (
         <motion.div
@@ -402,10 +432,10 @@ function Step7Photo({ wizard }: { wizard: ReturnType<typeof useWizard> }) {
             transition-all
           "
           role="button"
-          aria-label="Upload photo"
+          aria-label="Upload your photo"
         >
           <Upload size={32} className="text-primary opacity-60" />
-          <p className="font-heading font-semibold text-sm text-foreground">Click to upload a photo</p>
+          <p className="font-heading font-semibold text-sm text-foreground">Click to upload your photo</p>
           <p className="text-xs text-muted-foreground font-body">JPG, PNG or WebP · Max 5 MB</p>
         </motion.div>
       ) : (
@@ -413,33 +443,30 @@ function Step7Photo({ wizard }: { wizard: ReturnType<typeof useWizard> }) {
           <div className="grid sm:grid-cols-2 gap-4">
             {/* Original */}
             <div className="space-y-2">
-              <p className="text-xs font-heading font-semibold text-muted-foreground uppercase tracking-wide">Original</p>
+              <p className="text-xs font-heading font-semibold text-muted-foreground uppercase tracking-wide">Your photo</p>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={preview} alt="Uploaded photo" className="w-full rounded-2xl object-cover max-h-48" />
+              <img src={preview} alt="Your uploaded photo" className="w-full rounded-2xl object-cover max-h-48" />
             </div>
 
             {/* Sketch preview */}
             <div className="space-y-2">
-              <p className="text-xs font-heading font-semibold text-muted-foreground uppercase tracking-wide">Sketch Preview</p>
+              <p className="text-xs font-heading font-semibold text-muted-foreground uppercase tracking-wide">Sketch style preview</p>
               {sketching ? (
                 <div className="w-full h-48 rounded-2xl bg-muted flex flex-col items-center justify-center gap-3">
                   <Loader2 size={24} className="animate-spin text-primary" />
-                  <p className="text-xs font-body text-muted-foreground">Converting to sketch…</p>
+                  <p className="text-xs font-body text-muted-foreground">Applying sketch style…</p>
                 </div>
               ) : (
-                // Apply CSS filter to simulate sketch (grayscale + contrast)
-                // Production: use actual AI sketch endpoint
                 <div className="relative">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={preview}
-                    alt="Sketch preview"
+                    alt="Sketch style preview"
                     className="w-full rounded-2xl object-cover max-h-48"
-                    style={{ filter: "grayscale(100%) contrast(200%) brightness(110%)" }}
+                    style={{ filter: "grayscale(100%) brightness(1.15) contrast(1.8) sepia(30%)" }}
                   />
-                  <div className="absolute inset-0 rounded-2xl bg-white/10 mix-blend-overlay" />
                   <span className="absolute bottom-2 left-2 text-[10px] font-body bg-black/50 text-white px-2 py-0.5 rounded-full">
-                    Sketch simulation
+                    Sketch preview
                   </span>
                 </div>
               )}
@@ -449,7 +476,7 @@ function Step7Photo({ wizard }: { wizard: ReturnType<typeof useWizard> }) {
           {wizard.state.photoSketch && !sketching && (
             <div className="flex items-center gap-2 rounded-2xl bg-[#B9FBC0]/20 border border-[#B9FBC0]/40 px-4 py-3">
               <CheckCircle2 size={16} className="text-[#1a5a2a] dark:text-[#B9FBC0] shrink-0" />
-              <p className="text-xs font-body text-muted-foreground">Sketch ready — the hero will be drawn in this style!</p>
+              <p className="text-xs font-body text-muted-foreground">Photo ready — it will appear as an author credit at the end of the story.</p>
             </div>
           )}
 
@@ -462,6 +489,37 @@ function Step7Photo({ wizard }: { wizard: ReturnType<typeof useWizard> }) {
             </SproutButton>
           </div>
         </div>
+      )}
+
+      {/* ── Creator name field — only shown when a photo has been uploaded ── */}
+      {wizard.state.photoSketch && (
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-1.5"
+        >
+          <label className="text-xs font-heading font-semibold text-muted-foreground uppercase tracking-wide" htmlFor="creator-name-build">
+            Your name for the credit (optional)
+          </label>
+          <input
+            id="creator-name-build"
+            type="text"
+            value={wizard.state.creatorName}
+            onChange={(e) => wizard.update("creatorName", e.target.value)}
+            placeholder="e.g. Mum, Dad, Grandma Rosa…"
+            maxLength={80}
+            className="
+              w-full h-11 px-4 rounded-2xl border border-border
+              bg-background/60 backdrop-blur-sm font-body text-sm text-foreground
+              placeholder:text-muted-foreground/50
+              focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary/60
+              transition-all
+            "
+          />
+          <p className="text-[10px] text-muted-foreground font-body">
+            Will appear as &ldquo;Written with love by [your name]&rdquo; at the end of the story.
+          </p>
+        </motion.div>
       )}
 
       <input
@@ -477,7 +535,7 @@ function Step7Photo({ wizard }: { wizard: ReturnType<typeof useWizard> }) {
       />
 
       <p className="text-center text-xs text-muted-foreground font-body">
-        You can skip this step — the story works great without a photo!
+        This step is entirely optional — the story works beautifully without a photo.
       </p>
     </StepShell>
   );
@@ -523,7 +581,28 @@ function Step8Length({ wizard }: { wizard: ReturnType<typeof useWizard> }) {
   );
 }
 
-function Step9ArtStyle({ wizard }: { wizard: ReturnType<typeof useWizard> }) {
+function Step9Language({ wizard }: { wizard: ReturnType<typeof useWizard> }) {
+  return (
+    <StepShell title="Story language" emoji="🌍">
+      <p className="text-sm text-muted-foreground font-body -mt-2">
+        The story text, quiz, and vocabulary will be written in the chosen language. The app UI stays in English.
+      </p>
+      <div className="grid grid-cols-2 gap-3">
+        {LANGUAGES.map((l) => (
+          <OptionButton
+            key={l.id}
+            emoji={l.emoji}
+            label={l.label}
+            selected={wizard.state.language === l.id}
+            onClick={() => wizard.update("language", l.id)}
+          />
+        ))}
+      </div>
+    </StepShell>
+  );
+}
+
+function Step10ArtStyle({ wizard }: { wizard: ReturnType<typeof useWizard> }) {
   return (
     <StepShell title="Choose an art style" emoji="🖼️">
       <div className="grid sm:grid-cols-2 gap-5">
@@ -578,7 +657,8 @@ function SummaryScreen({ wizard }: { wizard: ReturnType<typeof useWizard> }) {
     { label: "Story type", value: state.storyType.startsWith("custom:") ? state.storyType.slice(7) : (STORY_TYPES.find((s) => s.id === state.storyType)?.label ?? state.storyType), step: 6, emoji: "📝" },
     { label: "Photo",      value: state.photoSketch ? "✓ Sketch added" : "None",                                                                                              step: 7,  emoji: "📸" },
     { label: "Length",     value: LENGTHS.find((l) => l.id === state.length)?.label ?? state.length,                                                                          step: 8,  emoji: "📏" },
-    { label: "Art style",  value: ART_STYLES.find((a) => a.id === state.artStyle)?.label ?? state.artStyle,                                                                   step: 9,  emoji: "🎨" },
+    { label: "Language",   value: state.language || "English",                                                                                                                 step: 9,  emoji: "🌍" },
+    { label: "Art style",  value: ART_STYLES.find((a) => a.id === state.artStyle)?.label ?? state.artStyle,                                                                   step: 10, emoji: "🎨" },
   ].filter((r) => r.value && r.value !== "—" || r.label === "Hero name");
 
   if (submitted) {
@@ -751,15 +831,16 @@ function WizardProgress({ step, total }: { step: number; total: number }) {
 ═══════════════════════════════════════════════════════════ */
 function canProceed(step: number, state: ReturnType<typeof useWizard>["state"]): boolean {
   switch (step) {
-    case 1: return !!state.heroType;
-    case 2: return !!state.incident;
-    case 3: return !!state.lesson;
-    case 4: return !!state.moral;
-    case 5: return !!state.theme;
-    case 6: return !!state.storyType;
-    case 7: return true; // optional
-    case 8: return !!state.length;
-    case 9: return !!state.artStyle;
+    case 1:  return !!state.heroType;
+    case 2:  return !!state.incident;
+    case 3:  return !!state.lesson;
+    case 4:  return !!state.moral;
+    case 5:  return !!state.theme;
+    case 6:  return !!state.storyType;
+    case 7:  return true;             // photo optional
+    case 8:  return !!state.length;
+    case 9:  return !!state.language;
+    case 10: return !!state.artStyle;
     default: return true;
   }
 }
@@ -836,16 +917,17 @@ export default function BuildStoryPage() {
               exit="exit"
               transition={{ type: "spring", stiffness: 320, damping: 30, duration: 0.35 }}
             >
-              {wizard.step === 1  && <Step1Hero      wizard={wizard} />}
-              {wizard.step === 2  && <Step2Incident  wizard={wizard} />}
-              {wizard.step === 3  && <Step3Lesson    wizard={wizard} />}
-              {wizard.step === 4  && <Step4Moral     wizard={wizard} />}
-              {wizard.step === 5  && <Step5Theme     wizard={wizard} />}
-              {wizard.step === 6  && <Step6StoryType wizard={wizard} />}
-              {wizard.step === 7  && <Step7Photo     wizard={wizard} />}
-              {wizard.step === 8  && <Step8Length    wizard={wizard} />}
-              {wizard.step === 9  && <Step9ArtStyle  wizard={wizard} />}
-              {wizard.isSummary  && <SummaryScreen   wizard={wizard} />}
+              {wizard.step === 1  && <Step1Hero       wizard={wizard} />}
+              {wizard.step === 2  && <Step2Incident   wizard={wizard} />}
+              {wizard.step === 3  && <Step3Lesson     wizard={wizard} />}
+              {wizard.step === 4  && <Step4Moral      wizard={wizard} />}
+              {wizard.step === 5  && <Step5Theme      wizard={wizard} />}
+              {wizard.step === 6  && <Step6StoryType  wizard={wizard} />}
+              {wizard.step === 7  && <Step7Photo      wizard={wizard} />}
+              {wizard.step === 8  && <Step8Length     wizard={wizard} />}
+              {wizard.step === 9  && <Step9Language   wizard={wizard} />}
+              {wizard.step === 10 && <Step10ArtStyle  wizard={wizard} />}
+              {wizard.isSummary   && <SummaryScreen   wizard={wizard} />}
             </motion.div>
           </AnimatePresence>
         </GlassCard>

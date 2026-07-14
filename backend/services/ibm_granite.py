@@ -22,12 +22,13 @@ logger = logging.getLogger(__name__)
 # Tamil / non-Latin scripts use more tokens per character, so these budgets
 # are generous.  "short" is intentionally kept modest so the model reliably
 # finishes the JSON rather than being cut off.
-_LENGTH_TOKENS = {"short": 2500, "medium": 4500}
+# The single storyImagePrompt field adds ~20 extra tokens at the root level.
+_LENGTH_TOKENS = {"short": 3000, "medium": 5500}
 
 # Page-text character limit per story length.  Shorter text = smaller JSON =
 # less chance of truncation.  These are soft guidance values embedded in the
 # prompt (not enforced in code).
-_PAGE_CHAR_HINT = {"short": 80, "medium": 100}
+_PAGE_CHAR_HINT = {"short": 250, "medium": 400}
 
 # Languages that use non-Latin / logographic scripts and need tighter per-page
 # character limits to avoid JSON truncation.  Each value overrides _PAGE_CHAR_HINT
@@ -309,19 +310,27 @@ def _build_prompt(req: StoryRequest, strict: bool = False, fact_corrections: str
 
     if language.lower() != "english":
         language_instruction = (
-            f"LANGUAGE: Write ALL story content in {language}. "
-            f"Title, every page text, quiz questions, options, answers, "
-            f"vocabulary words and meanings - ALL must be in {language}. "
-            f"Do NOT use English anywhere in the story content. "
-            f"JSON SAFETY: Each page text must be ONE continuous sentence or short phrase "
-            f"with NO literal newline characters inside any JSON string. "
-            f"Keep each page text under {page_char_hint} characters. "
-            f"Do NOT include any trailing commas in the JSON."
+            f"LANGUAGE — CRITICAL: You must write this entire story NATIVELY in {language}. "
+            f"Do NOT write in English and translate — that produces broken, unnatural text. "
+            f"Instead, THINK and COMPOSE directly in {language} from the very first word, "
+            f"exactly as a fluent native-speaker parent would tell this story to their child. "
+            f"Every sentence must be grammatically correct, naturally flowing {language} "
+            f"that a native-speaker parent can read aloud without noticing anything odd. "
+            f"Use warm, simple vocabulary that real children in {language}-speaking families "
+            f"actually hear. Absolutely NO literal word-by-word translation from English. "
+            f"NO English sentence structure imposed onto {language}. "
+            f"ALL output — title, every page text, quiz questions, options, answers, "
+            f"vocabulary words and their meanings — must be entirely in {language}. "
+            f"JSON SAFETY: keep each page text under {page_char_hint} characters, "
+            f"write it as a flowing paragraph on ONE line (no literal newline characters inside strings), "
+            f"and do NOT include trailing commas in the JSON."
         )
     else:
         language_instruction = (
-            f"Write the entire story in English. "
-            f"Keep each page text under {page_char_hint} characters and on a single line."
+            f"Write the entire story in clear, warm, fluent English. "
+            f"Keep each page text under {page_char_hint} characters. "
+            f"Write each page as a cohesive paragraph of 3-5 sentences on a single line "
+            f"(no literal newlines inside the JSON string)."
         )
 
     strict_prefix = (
@@ -424,39 +433,43 @@ def _build_prompt(req: StoryRequest, strict: bool = False, fact_corrections: str
         if fact_corrections else ""
     )
 
-    return f"""{strict_prefix}You are a children's story author. Write a complete, original, child-safe story.
+    return f"""{strict_prefix}You are a master children's story author who writes warm, vivid, read-aloud stories for families. Write a complete, original, child-safe story based exactly on the inputs below.
 
-READING LEVEL NOTE: The reading level ({req.ageLevel}) affects ONLY vocabulary difficulty and sentence length. The plot, story events, characters, and total number of pages ({page_count}) must be IDENTICAL regardless of reading level.
-
-STORY REQUIREMENTS:
-- Hero: {hero_label} (type: {req.heroType})
-- Conflict: {req.incident}
-- Lesson: {req.lesson}
-- Moral: {req.moral}
-- Theme/setting: {req.theme}
-- Genre: {req.storyType}
-- Art style: {req.artStyle}
-- Age group: {req.ageLevel} years
-- {language_instruction}
-- Age guidance: {age_instructions}
-- Total pages: {page_count}
+STORY CRAFT — follow these rules without exception:
+- The story must have a clear BEGINNING (introduce the hero and world), MIDDLE (the conflict unfolds), and END (the lesson is learned, all threads resolved). This is a complete narrative arc, not a list of disconnected scenes.
+- EVERY page continues naturally from the previous one. The same hero, setting, and thread run through the whole story without jumps or resets.
+- Each page is a rich paragraph: 3-5 warm, flowing sentences that advance the plot. Pages must NOT be single lines or fragments.
+- Storytelling tone: gentle, warm, vivid, and inviting — written to be read aloud by a parent at bedtime. Sentences should feel musical and natural, not mechanical.
+- The hero ({hero_label}), the conflict ({req.incident}), the lesson ({req.lesson}), the moral ({req.moral}), and the theme/setting ({req.theme}) must ALL be visibly present and meaningful in the story — not just mentioned once and dropped.
+- Age guidance for {req.ageLevel} years: {age_instructions}
 - 100% child-safe: no violence, no fear, no scary content.
-{domain_block}{corrections_block}
 
-OUTPUT FORMAT - follow these rules exactly:
-1. Output ONLY a raw JSON object. No markdown, no backticks, no ``` fences, no explanation.
-2. The output must begin with {{ and end with }} and nothing else.
-3. Every JSON string value must be on a single line - NO literal newline characters inside any string.
-4. Do NOT use double-quote characters inside any string value.
-5. Keep page text SHORT: maximum {page_char_hint} characters each.
-6. Only 3 pages should have an imagePrompt (the first, middle, and last page). All other pages must have "imagePrompt": null.
-7. Use EXACTLY this JSON shape:
+STORY INPUTS:
+- Hero: {hero_label} (type: {req.heroType})
+- Conflict / starting situation: {req.incident}
+- Lesson the hero learns: {req.lesson}
+- Moral of the story: {req.moral}
+- Theme / setting: {req.theme}
+- Genre: {req.storyType}
+- Total pages: {page_count}
+{domain_block}{corrections_block}
+LANGUAGE & WRITING:
+{language_instruction}
+
+OUTPUT FORMAT — follow every rule exactly:
+1. Output ONLY a raw JSON object. No markdown, no backticks, no ``` fences, no explanation text.
+2. The JSON must begin with {{ and end with }} with nothing outside.
+3. Every JSON string value must be on a single line — NO literal newline characters inside any string value.
+4. Do NOT use the double-quote character ( " ) inside any string value; rephrase to avoid it.
+5. storyImagePrompt: ONE English phrase (12-18 words) describing the key scene of the whole story for a children's book illustrator. Include the hero, the main setting, and the key moment. Always in English regardless of story language.
+6. Use EXACTLY this JSON shape — no extra fields, no missing fields:
 {{
   "title": "...",
+  "storyImagePrompt": "...",
   "pages": [
-    {{"pageNumber": 1, "text": "...", "imagePrompt": "<detailed {req.artStyle} illustration prompt>"}},
-    {{"pageNumber": 2, "text": "...", "imagePrompt": null}},
-    ... (exactly {page_count} page objects, only the first, middle, and last pages have a non-null imagePrompt; all other pages must have "imagePrompt": null)
+    {{"pageNumber": 1, "text": "..."}},
+    {{"pageNumber": 2, "text": "..."}},
+    ... (exactly {page_count} pages)
   ],
   "quiz": [
     {{"question": "...", "options": ["A", "B", "C", "D"], "answer": "A"}},
@@ -491,8 +504,10 @@ Your task: return ONLY the corrected, complete, valid JSON object.
 - Output must start with {{ and end with }}.
 - Every string value must be on ONE line (no literal newlines inside strings).
 - Do NOT use double-quote characters inside any string value.
-- Keep all text in {language}.
+- Keep all story text in {language}.
 - The JSON must have exactly {page_count} pages in the "pages" array.
+- The root object must include a "storyImagePrompt" string (English, 12-18 words).
+- Each page object must have "pageNumber" and "text" fields only (no "imagePrompt" per page).
 
 BROKEN JSON TO FIX:
 {broken_json[:1500]}

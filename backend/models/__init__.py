@@ -23,6 +23,9 @@ class ImagePageRequest(BaseModel):
     """One page's worth of data needed to generate its illustration."""
     pageNumber: int
     text: str
+    # When the story already contains an imagePrompt, pass it here to skip
+    # the Granite keyword-extraction call and use it directly.
+    imagePrompt: Optional[str] = None
 
 
 class ImageRequest(BaseModel):
@@ -60,6 +63,27 @@ class CoverImageRequest(BaseModel):
 
 class CoverImageResponse(BaseModel):
     """Response body from POST /generate-cover-image."""
+    imageUrl: str
+
+
+class StoryImageRequest(BaseModel):
+    """Request body for POST /generate-story-image.
+
+    Generates exactly ONE illustration for the whole story based on the full
+    story context rather than a single page.
+    """
+    title: str
+    # The model-generated image prompt from the storyImagePrompt field
+    storyImagePrompt: str
+    # Plain-English description of the hero (same as passed to /generate-images)
+    heroDescription: str
+    # "color" or "sketch"
+    artStyle: str
+    seed: int = 42
+
+
+class StoryImageResponse(BaseModel):
+    """Response body from POST /generate-story-image."""
     imageUrl: str
 
 

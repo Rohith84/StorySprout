@@ -11,15 +11,14 @@ if str(_BACKEND_DIR) not in sys.path:
 
 import hashlib
 import logging
-from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 from services.ibm_granite import generate_text, generate_story
-from services.image_gen import generate_page_image, _get_keyword_model
-from models import StoryRequest, ImageRequest, ImageResponse, ImagePageResult, CoverImageRequest, CoverImageResponse, SharePayload, SharePayloadResponse
+from services.image_gen import generate_story_image, _fetch_and_save, _STATIC_DIR, _STYLE_SUFFIX
+from models import StoryRequest, CoverImageRequest, CoverImageResponse, StoryImageRequest, StoryImageResponse, SharePayload, SharePayloadResponse
 from services.codec import generate_short_code
 from services.story_repository import FileStoryRepository, SharedStory
 
@@ -92,69 +91,37 @@ def generate_story_endpoint(req: StoryRequest):
 _log = logging.getLogger(__name__)
 
 
-@app.post("/generate-images", response_model=ImageResponse)
-def generate_images_endpoint(req: ImageRequest):
-    """Generate all page illustrations in parallel and return their URLs.
+@app.post("/generate-story-image", response_model=StoryImageResponse)
+def generate_story_image_endpoint(req: StoryImageRequest):
+    """Generate exactly ONE illustration for the whole story.
 
-    All pages are dispatched simultaneously to a thread pool so that Granite
-    keyword calls and Pollinations HTTP requests all run concurrently.
-    Total wall-clock time ≈ slowest single page instead of sum of all pages.
+    Builds the image prompt from the entire story context — hero description,
+    the Granite-generated storyImagePrompt (key scene), and the art style — so
+    the result represents the whole story rather than a single page.
     """
-    if not req.pages:
-        raise HTTPException(status_code=400, detail="pages must not be empty")
-
-    # Stable story_id derived from the first page text (idempotent across reloads)
-    digest = hashlib.sha1(req.pages[0].text.encode()).hexdigest()[:12]
-    story_id = f"story_{digest}"
-
-    # Build ONE shared Granite client for all keyword-extraction workers
-    shared_model = _get_keyword_model()
-
-    def _generate_one(page) -> ImagePageResult:
-        try:
-            url, keywords = generate_page_image(
-                page_number=page.pageNumber,
-                page_text=page.text,
-                character_description=req.characterDescription,
-                art_style=req.artStyle,
-                story_id=story_id,
-                seed=req.seed,
-                model=shared_model,
-            )
-            _log.info("✓ Page %d done — %s", page.pageNumber, url)
-            return ImagePageResult(pageNumber=page.pageNumber, imageUrl=url, keywords=keywords)
-        except Exception as exc:
-            _log.error("✗ Page %d failed — %s", page.pageNumber, exc)
-            return ImagePageResult(pageNumber=page.pageNumber, imageUrl="", keywords=[])
-
-    # Dispatch all pages at once — max_workers = number of pages (≤ 20)
-    results: list[ImagePageResult] = [None] * len(req.pages)  # type: ignore[list-item]
-    with ThreadPoolExecutor(max_workers=len(req.pages)) as pool:
-        future_to_idx = {
-            pool.submit(_generate_one, page): i
-            for i, page in enumerate(req.pages)
-        }
-        for future in as_completed(future_to_idx):
-            idx = future_to_idx[future]
-            results[idx] = future.result()
-
-    # Sort by pageNumber to guarantee correct order in the response
-    results.sort(key=lambda r: r.pageNumber)
-    return ImageResponse(pages=results)
+    try:
+        image_url = generate_story_image(
+            title=req.title,
+            story_image_prompt=req.storyImagePrompt,
+            hero_description=req.heroDescription,
+            art_style=req.artStyle,
+            seed=req.seed,
+        )
+        _log.info("Story image generated: %s", image_url)
+        return StoryImageResponse(imageUrl=image_url)
+    except Exception as exc:
+        _log.error("Story image generation failed: %s", exc)
+        raise HTTPException(
+            status_code=503,
+            detail={"error": "story_image_failed", "message": str(exc)},
+        )
 
 
 @app.post("/generate-cover-image", response_model=CoverImageResponse)
 def generate_cover_image_endpoint(req: CoverImageRequest):
-    """Generate a single cover illustration for the whole story.
-
-    Uses the same Pollinations/Granite pipeline but targets just one image,
-    so it returns fast (single HTTP round-trip to Pollinations).
-    """
-    import hashlib as _hashlib
-    from services.image_gen import _fetch_and_save, _STATIC_DIR, _STYLE_SUFFIX
-
+    """Kept for backwards compatibility — delegates to generate_story_image logic."""
     # Stable story_id from the prompt
-    digest = _hashlib.sha1(req.storyPrompt.encode()).hexdigest()[:12]
+    digest = hashlib.sha1(req.storyPrompt.encode()).hexdigest()[:12]
     story_id = f"story_{digest}"
     save_path = _STATIC_DIR / story_id / "cover.jpg"
 
