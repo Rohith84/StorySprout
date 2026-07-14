@@ -3,12 +3,12 @@
 import * as React from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import Link from "next/link";
-import { useParams, useSearchParams } from "next/navigation";
+import { useParams } from "next/navigation";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { GlassCard } from "@/components/ui/sprout-cards";
 import { SproutButton } from "@/components/ui/sprout-button";
 import { GRADIENTS, ILLUSTRATIONS } from "@/lib/story-constants";
-import type { StoryResponse } from "@/lib/auth-types";
+import { ENCHANTED_FOREST_SAMPLE } from "@/lib/enchanted-forest-sample";
 
 interface StoryPageView {
   pageNum: number;
@@ -18,14 +18,12 @@ interface StoryPageView {
   title: string;
 }
 
-function decodeStoryPayload(data: string): StoryResponse {
-  const binary = atob(data);
-  const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
-  const json = new TextDecoder().decode(bytes);
-  return JSON.parse(json) as StoryResponse;
+interface StoryData {
+  title: string;
+  pages: { pageNumber: number; text: string }[];
 }
 
-function buildPages(story: StoryResponse): StoryPageView[] {
+function buildPages(story: StoryData): StoryPageView[] {
   return story.pages.map((page, index) => ({
     pageNum: page.pageNumber,
     illustration: ILLUSTRATIONS[index % ILLUSTRATIONS.length],
@@ -37,39 +35,63 @@ function buildPages(story: StoryResponse): StoryPageView[] {
 
 export default function PublicStoryPage() {
   const params = useParams<{ slug: string }>();
-  const searchParams = useSearchParams();
   const [current, setCurrent] = React.useState(0);
   const [direction, setDirection] = React.useState(1);
   const [storyState, setStoryState] = React.useState<{
     title: string;
     pages: StoryPageView[];
     error: boolean;
-  }>({ title: "", pages: [], error: false });
+    loading: boolean;
+  }>({ title: "", pages: [], error: false, loading: true });
 
   React.useEffect(() => {
-    const data = searchParams.get("data");
-    if (!data) {
-      setStoryState({ title: "", pages: [], error: true });
-      return;
-    }
+    let cancelled = false;
 
-    try {
-      const story = decodeStoryPayload(data);
-      if (!story.pages?.length) {
-        setStoryState({ title: "", pages: [], error: true });
+    async function fetchStory() {
+      // Special case: enchanted-forest is a built-in sample, no API call needed
+      if (params.slug === "enchanted-forest") {
+        if (!cancelled) {
+          setStoryState({
+            title: ENCHANTED_FOREST_SAMPLE.title,
+            pages: buildPages(ENCHANTED_FOREST_SAMPLE),
+            error: false,
+            loading: false,
+          });
+          setCurrent(0);
+        }
         return;
       }
 
-      setStoryState({
-        title: story.title,
-        pages: buildPages(story),
-        error: false,
-      });
-      setCurrent(0);
-    } catch {
-      setStoryState({ title: "", pages: [], error: true });
+      try {
+        const res = await fetch(`/api/shares/${params.slug}`);
+        if (!res.ok) {
+          if (!cancelled) setStoryState({ title: "", pages: [], error: true, loading: false });
+          return;
+        }
+
+        const data: StoryData = await res.json();
+        if (!data.pages?.length) {
+          if (!cancelled) setStoryState({ title: "", pages: [], error: true, loading: false });
+          return;
+        }
+
+        if (!cancelled) {
+          setStoryState({
+            title: data.title,
+            pages: buildPages(data),
+            error: false,
+            loading: false,
+          });
+          setCurrent(0);
+        }
+      } catch {
+        if (!cancelled) setStoryState({ title: "", pages: [], error: true, loading: false });
+      }
     }
-  }, [searchParams]);
+
+    fetchStory();
+    return () => { cancelled = true; };
+  }, [params.slug]);
 
   const page = storyState.pages[current];
   const slideVariants = {
@@ -84,7 +106,7 @@ export default function PublicStoryPage() {
         <GlassCard padding="lg" className="max-w-xl w-full text-center space-y-4">
           <h1 className="font-heading font-bold text-2xl">Story not found</h1>
           <p className="text-sm text-muted-foreground font-body">
-            This shared story link could not be decoded. The link may be missing or expired.
+            This shared story link could not be loaded. The link may be invalid or expired.
           </p>
           <Link href="/">
             <SproutButton variant="primary" size="lg">Make Your Own Story</SproutButton>
@@ -94,8 +116,12 @@ export default function PublicStoryPage() {
     );
   }
 
-  if (!page) {
-    return null;
+  if (storyState.loading || !page) {
+    return (
+      <div className="min-h-screen gradient-page flex items-center justify-center p-4">
+        <div className="animate-pulse text-muted-foreground font-body">Loading story...</div>
+      </div>
+    );
   }
 
   return (

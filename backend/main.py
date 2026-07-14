@@ -15,10 +15,25 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 from services.ibm_granite import generate_text, generate_story
-from models import StoryRequest
+from models import StoryRequest, SharePayload, SharePayloadResponse
+from services.codec import generate_short_code
+from services.story_repository import FileStoryRepository, SharedStory
 
 # Load .env from backend/ regardless of the working directory
 load_dotenv(dotenv_path=_BACKEND_DIR / ".env")
+
+# ---------------------------------------------------------------------------
+# Repository singleton (DI-ready)
+# ---------------------------------------------------------------------------
+_repo: FileStoryRepository | None = None
+
+
+def _get_repo() -> FileStoryRepository:
+    global _repo
+    if _repo is None:
+        _repo = FileStoryRepository()
+    return _repo
+
 
 logging.basicConfig(
     level=logging.INFO,
@@ -63,3 +78,36 @@ def generate_story_endpoint(req: StoryRequest):
             },
         )
     return result
+
+
+# ---------------------------------------------------------------------------
+# Share-link shortener
+# ---------------------------------------------------------------------------
+
+
+@app.post("/api/shares", status_code=201)
+def create_share(payload: SharePayload):
+    repo = _get_repo()
+    code = generate_short_code()
+    while repo.get(code) is not None:
+        code = generate_short_code()
+
+    story = SharedStory(
+        code=code,
+        title=payload.title,
+        pages=[p.model_dump() for p in payload.pages],
+    )
+    repo.save(story)
+
+    return SharePayloadResponse(code=code, url=f"/story/{code}")
+
+@app.get("/api/shares/{code}")
+def get_share(code: str):
+    repo = _get_repo()
+    story = repo.get(code)
+    if story is None:
+        raise HTTPException(status_code=404, detail="Share link not found")
+    return {
+        "title": story.title,
+        "pages": story.pages,
+    }

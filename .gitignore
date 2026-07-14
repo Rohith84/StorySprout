@@ -61,3 +61,5 @@ __pycache__/
 *.pyd
 .pytest_cache/
 .ipynb_checkpoints/
+
+backend/data/

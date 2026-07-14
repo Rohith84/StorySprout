@@ -47,8 +47,10 @@ function readMeta(): StoryMeta {
 }
 
 function useStoryMeta(): StoryMeta {
-  // Lazy initialiser — sessionStorage is synchronous so no effect needed
-  const [meta] = React.useState<StoryMeta>(readMeta);
+  const [meta, setMeta] = React.useState<StoryMeta>(FALLBACK_META);
+  React.useEffect(() => {
+    setMeta(readMeta());
+  }, []);
   return meta;
 }
 
