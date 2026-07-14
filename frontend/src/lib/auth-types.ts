@@ -138,3 +138,18 @@ export const STORY_SESSION_KEY = "sprout_current_story";
  * to the reader's credit page. Tab-local only — never persisted to any DB.
  */
 export const PHOTO_SESSION_KEY = "sprout_creator_photo";
+
+/** sessionStorage key used to pass the story creation inputs to the PDF generator. */
+export const STORY_PAYLOAD_SESSION_KEY = "sprout_story_payload";
+
+/**
+ * The story creation payload as persisted to sessionStorage.
+ * Extends StoryPayload with a creation timestamp and the optional language
+ * field that Quick mode adds (Build mode omits it).
+ */
+export interface StoredPayload extends StoryPayload {
+  /** ISO-8601 timestamp captured when the story was first saved. */
+  createdAt: string;
+  /** Story language — present for Quick mode, absent for Build mode. */
+  language?: string;
+}

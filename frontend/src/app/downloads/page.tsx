@@ -4,21 +4,70 @@ import * as React from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { ChevronLeft, Download, Share2, Copy, CheckCircle2, Sparkles } from "lucide-react";
-import { GlassCard } from "@/components/ui/sprout-cards";
+import { GlassCard, StatCard } from "@/components/ui/sprout-cards";
 import { SproutButton } from "@/components/ui/sprout-button";
 import { SproutBadge } from "@/components/ui/sprout-misc";
 import { useToast, ToastContainer } from "@/components/ui/sprout-misc";
+import { usePdfDownload } from "@/hooks/use-pdf-download";
+import { useShareLink } from "@/hooks/use-share-link";
+import type { StoryResponse } from "@/lib/auth-types";
+import { STORY_SESSION_KEY } from "@/lib/auth-types";
 
-const downloadItems = [
+// ---------------------------------------------------------------------------
+// Story metadata — read from sessionStorage, fallback to sample values
+// ---------------------------------------------------------------------------
+
+interface StoryMeta {
+  title: string;
+  pageCount: number;
+  vocabCount: number;
+}
+
+const FALLBACK_META: StoryMeta = {
+  title: "The Enchanted Forest",
+  pageCount: 5,
+  vocabCount: 4,
+};
+
+function readMeta(): StoryMeta {
+  if (typeof window === "undefined") return FALLBACK_META;
+  try {
+    const raw = sessionStorage.getItem(STORY_SESSION_KEY);
+    if (!raw) return FALLBACK_META;
+    const story = JSON.parse(raw) as StoryResponse;
+    if (!story.pages?.length) return FALLBACK_META;
+    return {
+      title: story.title,
+      pageCount: story.pages.length,
+      vocabCount: story.vocabulary?.length ?? 0,
+    };
+  } catch {
+    return FALLBACK_META;
+  }
+}
+
+function useStoryMeta(): StoryMeta {
+  const [meta, setMeta] = React.useState<StoryMeta>(FALLBACK_META);
+  React.useEffect(() => {
+    setMeta(readMeta());
+  }, []);
+  return meta;
+}
+
+// ---------------------------------------------------------------------------
+// Download item definitions (pdf wired; images + audio are placeholders)
+// ---------------------------------------------------------------------------
+
+const NON_PDF_ITEMS = [
   {
-    id: "pdf",
-    title: "Download PDF",
-    desc: "Beautifully formatted storybook with all illustrations",
-    icon: "📄",
-    gradient: "linear-gradient(135deg, #6CC6FF, #BFA7FF)",
-    size: "2.4 MB",
-    badge: "Most Popular",
-    badgeVariant: "solid" as const,
+    id: "images",
+    title: "Download Images",
+    desc: "All high-resolution illustrations as PNG files",
+    icon: "🖼️",
+    gradient: "linear-gradient(135deg, #FFD8A8, #FFE66D)",
+    size: "8.1 MB",
+    badge: "ZIP Archive",
+    badgeVariant: "sunny" as const,
   },
   {
     id: "audio",
@@ -32,14 +81,77 @@ const downloadItems = [
   },
 ];
 
+// ---------------------------------------------------------------------------
+// Page component
+// ---------------------------------------------------------------------------
+
 export default function DownloadsPage() {
   const { toasts, toast, dismiss } = useToast();
+  const meta = useStoryMeta();
+
+  // PDF download — real generation
+  const { isGenerating, generate } = usePdfDownload();
+  const [pdfDone, setPdfDone] = React.useState(false);
+
+  // Non-PDF downloads — fake behaviour unchanged
   const [downloading, setDownloading] = React.useState<string | null>(null);
   const [downloaded, setDownloaded] = React.useState<Set<string>>(new Set());
-  const [copied, setCopied] = React.useState(false);
-  const shareLink = "https://storysprout.app/story/enchanted-forest";
 
-  function handleDownload(id: string) {
+  const [copied, setCopied] = React.useState(false);
+  const shareLink = useShareLink();
+
+  const shareHandlers = React.useMemo(() => {
+    const title = meta.title;
+    const message = `Read my story: ${title}\n\n`;
+
+    return {
+      WhatsApp: () => {
+        const url = `https://wa.me/?text=${encodeURIComponent(`${message}${shareLink}`)}`;
+        window.open(url, "_blank", "noopener,noreferrer");
+      },
+      Twitter: () => {
+        const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(message)}&url=${encodeURIComponent(shareLink)}`;
+        window.open(url, "_blank", "noopener,noreferrer");
+      },
+      Email: () => {
+        const url = `mailto:?subject=${encodeURIComponent(title)}&body=${encodeURIComponent(`${message}${shareLink}`)}`;
+        window.location.href = url;
+      },
+      "More…": async () => {
+        if (typeof navigator !== "undefined" && navigator.share) {
+          await navigator.share({
+            title,
+            text: message.trim(),
+            url: shareLink,
+          });
+          return;
+        }
+
+        if (typeof navigator !== "undefined") {
+          await navigator.clipboard.writeText(shareLink);
+          toast.success("Link copied!", "Share this with friends and family.");
+          setCopied(true);
+          setTimeout(() => setCopied(false), 3000);
+        }
+      },
+    } as const;
+  }, [meta.title, shareLink, toast]);
+
+  // ── PDF handler ───────────────────────────────────────────────────────────
+  async function handlePdfDownload() {
+    if (isGenerating || pdfDone) return;
+    toast.magic("Generating PDF…", "Building your storybook, this may take a moment.");
+    try {
+      await generate();
+      setPdfDone(true);
+      toast.success("Download complete!", "Your PDF has been saved.");
+    } catch {
+      toast.error("PDF failed", "Something went wrong. Please try again.");
+    }
+  }
+
+  // ── Non-PDF handler ───────────────────────────────────────────────────────
+  function handleFakeDownload(id: string) {
     if (downloading) return;
     setDownloading(id);
     toast.magic("Download started!", "Your file is being prepared…");
@@ -50,6 +162,7 @@ export default function DownloadsPage() {
     }, 2000);
   }
 
+  // ── Copy link ─────────────────────────────────────────────────────────────
   function handleCopy() {
     if (typeof navigator !== "undefined") {
       navigator.clipboard.writeText(shareLink).catch(() => {});
@@ -66,32 +179,116 @@ export default function DownloadsPage() {
       {/* Header */}
       <div className="sticky top-0 z-20 glass border-b border-border/40 px-4 py-3 flex items-center gap-3">
         <Link href="/reader/1">
-          <button className="p-2 rounded-xl hover:bg-muted/60 text-muted-foreground hover:text-foreground transition-colors" aria-label="Back">
+          <button
+            className="p-2 rounded-xl hover:bg-muted/60 text-muted-foreground hover:text-foreground transition-colors"
+            aria-label="Back"
+          >
             <ChevronLeft size={20} />
           </button>
         </Link>
         <div>
           <h1 className="font-heading font-bold text-base">Downloads & Sharing</h1>
-          <p className="text-xs text-muted-foreground font-body">The Enchanted Forest</p>
+          <p className="text-xs text-muted-foreground font-body">{meta.title}</p>
         </div>
       </div>
 
       <div className="max-w-xl mx-auto px-4 py-8 space-y-6">
+
+        {/* Story preview */}
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
+          <GlassCard padding="md" className="flex items-center gap-4">
+            <div
+              className="w-16 h-20 rounded-2xl flex items-center justify-center text-3xl shrink-0 shadow-md"
+              style={{ background: "linear-gradient(135deg, #B9FBC0, #6CC6FF)" }}
+            >
+              🌲
+            </div>
+            <div>
+              <p className="font-heading font-bold text-base">{meta.title}</p>
+              <p className="text-xs text-muted-foreground font-body">
+                {meta.pageCount} pages · {meta.vocabCount} vocabulary words
+              </p>
+              <div className="flex gap-2 mt-2">
+                <SproutBadge variant="sky">Ages 4–7</SproutBadge>
+                <SproutBadge variant="mint">Fantasy</SproutBadge>
+              </div>
+            </div>
+          </GlassCard>
+        </motion.div>
+
         {/* Download options */}
         <div className="space-y-4">
           <h2 className="font-heading font-bold text-xl">📥 Download Options</h2>
-          {downloadItems.map((item, i) => (
+
+          {/* ── PDF card — real download ── */}
             <motion.div
-              key={item.id}
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.1 }}
+            transition={{ delay: 0 }}
             >
               <GlassCard hover={false} padding="none">
                 <div className="flex items-center gap-4 p-4">
                   {/* Icon */}
-                  <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-3xl shrink-0 shadow-md"
-                    style={{ background: item.gradient }}>
+                <div
+                  className="w-14 h-14 rounded-2xl flex items-center justify-center text-3xl shrink-0 shadow-md"
+                  style={{ background: "linear-gradient(135deg, #6CC6FF, #BFA7FF)" }}
+                >
+                  📄
+                </div>
+                {/* Info */}
+                <div className="flex-1 min-w-0 space-y-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="font-heading font-bold text-sm">Download PDF</p>
+                    <SproutBadge variant="solid" className="text-[10px]">Most Popular</SproutBadge>
+                  </div>
+                  <p className="text-xs text-muted-foreground font-body">
+                    Beautifully formatted storybook with all illustrations
+                  </p>
+                  <p className="text-xs text-muted-foreground font-body">
+                    {isGenerating ? "Generating…" : "Storybook PDF"}
+                  </p>
+                </div>
+                {/* Button */}
+                <motion.button
+                  whileHover={{ scale: pdfDone ? 1 : 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={handlePdfDownload}
+                  disabled={isGenerating || pdfDone}
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-heading font-semibold text-sm transition-all shrink-0 ${
+                    pdfDone
+                      ? "bg-mint/30 text-[#1a5a2a] dark:text-mint border border-mint"
+                      : isGenerating
+                        ? "opacity-70 cursor-not-allowed bg-muted text-muted-foreground"
+                        : "gradient-sky text-white shadow-md hover:brightness-105"
+                  }`}
+                >
+                  {pdfDone ? (
+                    <><CheckCircle2 size={16} /> Done</>
+                  ) : isGenerating ? (
+                    <><span className="w-4 h-4 rounded-full border-2 border-current border-t-transparent animate-spin" /> Saving…</>
+                  ) : (
+                    <><Download size={16} /> Save</>
+                  )}
+                </motion.button>
+              </div>
+            </GlassCard>
+          </motion.div>
+
+          {/* ── Non-PDF cards — placeholder behaviour unchanged ── */}
+          {NON_PDF_ITEMS.map((item, i) => (
+            <motion.div
+              key={item.id}
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: (i + 1) * 0.1 }}
+            >
+              <GlassCard hover={false} padding="none">
+                <div className="flex items-center gap-4 p-4">
+                  {/* Icon */}
+                  <div
+                    className="w-14 h-14 rounded-2xl flex items-center justify-center text-3xl shrink-0 shadow-md"
+                    style={{ background: item.gradient }}
+                  >
                     {item.icon}
                   </div>
                   {/* Info */}
@@ -107,14 +304,14 @@ export default function DownloadsPage() {
                   <motion.button
                     whileHover={{ scale: downloaded.has(item.id) ? 1 : 1.05 }}
                     whileTap={{ scale: 0.95 }}
-                    onClick={() => handleDownload(item.id)}
+                    onClick={() => handleFakeDownload(item.id)}
                     disabled={!!downloading}
                     className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-heading font-semibold text-sm transition-all shrink-0 ${
                       downloaded.has(item.id)
-                        ? "bg-[#B9FBC0]/30 text-[#1a5a2a] dark:text-[#B9FBC0] border border-[#B9FBC0]"
+                        ? "bg-mint/30 text-[#1a5a2a] dark:text-mint border border-mint"
                         : downloading === item.id
                           ? "opacity-70 cursor-not-allowed bg-muted text-muted-foreground"
-                          : "bg-gradient-to-r from-[#6CC6FF] to-[#BFA7FF] text-white shadow-md hover:brightness-105"
+                          : "gradient-sky text-white shadow-md hover:brightness-105"
                     }`}
                   >
                     {downloaded.has(item.id) ? (
@@ -135,7 +332,7 @@ export default function DownloadsPage() {
         <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}>
           <GlassCard padding="lg" hover={false} className="space-y-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#BFA7FF] to-[#6CC6FF] flex items-center justify-center shadow-md">
+              <div className="w-10 h-10 rounded-2xl bg-linear-to-br from-lavender to-sky-blue flex items-center justify-center shadow-md">
                 <Share2 size={18} className="text-white" />
               </div>
               <div>
@@ -154,8 +351,8 @@ export default function DownloadsPage() {
                 onClick={handleCopy}
                 className={`h-11 px-4 rounded-2xl font-heading font-semibold text-sm flex items-center gap-2 transition-all shrink-0 ${
                   copied
-                    ? "bg-[#B9FBC0]/30 text-[#1a5a2a] dark:text-[#B9FBC0] border border-[#B9FBC0]"
-                    : "bg-gradient-to-r from-[#6CC6FF] to-[#BFA7FF] text-white shadow-md hover:brightness-105"
+                    ? "bg-mint/30 text-[#1a5a2a] dark:text-mint border border-mint"
+                    : "gradient-sky text-white shadow-md hover:brightness-105"
                 }`}
               >
                 {copied ? <CheckCircle2 size={16} /> : <Copy size={16} />}
@@ -166,15 +363,16 @@ export default function DownloadsPage() {
             {/* Share platforms */}
             <div className="flex gap-2 flex-wrap">
               {[
-                { name: "WhatsApp", emoji: "💬", color: "#25D366" },
-                { name: "Twitter",  emoji: "🐦", color: "#1DA1F2" },
-                { name: "Email",    emoji: "📧", color: "#6CC6FF"  },
-                { name: "More…",    emoji: "➕", color: "#BFA7FF"  },
+                { name: "WhatsApp", emoji: "💬" },
+                { name: "Twitter",  emoji: "🐦" },
+                { name: "Email",    emoji: "📧" },
+                { name: "More…",    emoji: "➕" },
               ].map((s) => (
                 <motion.button
                   key={s.name}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.9 }}
+                  onClick={() => void shareHandlers[s.name as keyof typeof shareHandlers]()}
                   className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-heading font-semibold border border-border hover:bg-muted/60 transition-colors"
                 >
                   <span>{s.emoji}</span>
@@ -183,6 +381,25 @@ export default function DownloadsPage() {
               ))}
             </div>
           </GlassCard>
+        </motion.div>
+
+        {/* Stats */}
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45 }}>
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              { label: "Pages",        value: String(meta.pageCount), icon: "📄", gradient: "sky"    as const },
+              { label: "Vocabulary",   value: String(meta.vocabCount), icon: "🔤", gradient: "sunset" as const },
+              { label: "Quiz items",   value: "3",                    icon: "🧩", gradient: "forest" as const },
+            ].map((s) => (
+              <StatCard
+                key={s.label}
+                label={s.label}
+                value={s.value}
+                icon={<span className="text-lg">{s.icon}</span>}
+                gradient={s.gradient}
+              />
+            ))}
+          </div>
         </motion.div>
 
         {/* Back navigation */}

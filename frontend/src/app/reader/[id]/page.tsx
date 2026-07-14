@@ -11,6 +11,7 @@ import { SproutButton } from "@/components/ui/sprout-button";
 import { SproutBadge } from "@/components/ui/sprout-misc";
 import type { StoryResponse } from "@/lib/auth-types";
 import { STORY_SESSION_KEY, PHOTO_SESSION_KEY } from "@/lib/auth-types";
+import { GRADIENTS, ILLUSTRATIONS } from "@/lib/story-constants";
 
 const FASTAPI_URL = process.env.NEXT_PUBLIC_FASTAPI_URL ?? "http://localhost:8000";
 

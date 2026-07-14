@@ -61,3 +61,19 @@ class CoverImageRequest(BaseModel):
 class CoverImageResponse(BaseModel):
     """Response body from POST /generate-cover-image."""
     imageUrl: str
+
+
+class SharePage(BaseModel):
+    pageNumber: int
+    text: str
+    imagePrompt: str = ""
+
+
+class SharePayload(BaseModel):
+    title: str
+    pages: list[SharePage]
+
+
+class SharePayloadResponse(BaseModel):
+    code: str
+    url: str

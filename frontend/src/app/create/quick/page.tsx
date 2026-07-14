@@ -19,7 +19,7 @@ import { Sparkles, ChevronLeft, ChevronRight, Loader2, AlertCircle } from "lucid
 import { GlassCard } from "@/components/ui/sprout-cards";
 import { SproutButton } from "@/components/ui/sprout-button";
 import { SproutBadge } from "@/components/ui/sprout-misc";
-import { STORY_SESSION_KEY } from "@/lib/auth-types";
+import { STORY_SESSION_KEY, STORY_PAYLOAD_SESSION_KEY } from "@/lib/auth-types";
 import type { StoryResponse } from "@/lib/auth-types";
 import { sanitizeInput } from "@/lib/auth-service";
 
@@ -310,6 +310,11 @@ export default function QuickCreatePage() {
       const story = await res.json() as StoryResponse;
       if (typeof window !== "undefined") {
         sessionStorage.setItem(STORY_SESSION_KEY, JSON.stringify(story));
+        // Persist creation inputs for PDF metadata page
+        sessionStorage.setItem(
+          STORY_PAYLOAD_SESSION_KEY,
+          JSON.stringify({ ...payload, createdAt: new Date().toISOString() }),
+        );
       }
       router.push("/loading");
     } catch (err) {
