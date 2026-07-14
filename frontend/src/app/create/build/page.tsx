@@ -85,9 +85,8 @@ const STORY_TYPES = [
 ] as const;
 
 const LENGTHS = [
-  { id: "short"  as const, label: "Short",   sub: "About 5 pages",  detail: "~5 minutes",    emoji: "📄" },
-  { id: "medium" as const, label: "Medium",  sub: "About 10 pages", detail: "~15 minutes",   emoji: "📖" },
-  { id: "lengthy"as const, label: "Lengthy", sub: "About 20 pages", detail: "30–40 minutes", emoji: "📚" },
+  { id: "short"  as const, label: "Short",  sub: "About 5 pages",  detail: "~5 minutes",  emoji: "📄" },
+  { id: "medium" as const, label: "Medium", sub: "About 10 pages", detail: "~15 minutes", emoji: "📖" },
 ] as const;
 
 const ART_STYLES = [

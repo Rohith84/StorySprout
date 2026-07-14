@@ -10,7 +10,7 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import type { StoryPayload, StoryResponse } from "@/lib/auth-types";
-import { STORY_SESSION_KEY } from "@/lib/auth-types";
+import { STORY_SESSION_KEY, PHOTO_SESSION_KEY } from "@/lib/auth-types";
 import { sanitizeInput } from "@/lib/auth-service";
 
 export interface WizardState {
@@ -22,7 +22,7 @@ export interface WizardState {
   theme: string;
   storyType: string;
   photoSketch: string | null;
-  length: "short" | "medium" | "lengthy";
+  length: "short" | "medium";
   artStyle: "sketch" | "color";
   ageLevel: "3-5" | "6-8" | "9-12";
   language: string;
@@ -105,9 +105,27 @@ export function useWizard() {
         );
       }
       const story = await res.json() as StoryResponse;
-      // Persist story for reader / quiz / vocabulary pages
+      // Persist story for reader / quiz / vocabulary pages.
+      // heroDescription and artStyle are stashed here so the reader can pass
+      // them verbatim to POST /generate-images without re-deriving them.
       if (typeof window !== "undefined") {
-        sessionStorage.setItem(STORY_SESSION_KEY, JSON.stringify(story));
+        const heroLabel = state.heroName
+          ? `${state.heroName}, a ${state.heroType}`
+          : `a ${state.heroType}`;
+        const enriched = {
+          ...story,
+          heroDescription: `${heroLabel}, cheerful friendly cartoon character with big round eyes`,
+          artStyle: state.artStyle,   // "color" | "sketch"
+          theme: state.theme,         // passed to reader for ambient animation
+        };
+        sessionStorage.setItem(STORY_SESSION_KEY, JSON.stringify(enriched));
+        // Store parent photo separately so it doesn't bloat the story JSON.
+        // Uses sessionStorage (tab-only, never persisted) for privacy.
+        if (state.photoSketch) {
+          sessionStorage.setItem(PHOTO_SESSION_KEY, state.photoSketch);
+        } else {
+          sessionStorage.removeItem(PHOTO_SESSION_KEY);
+        }
       }
       setSubmitted(payload);
       router.push("/loading");

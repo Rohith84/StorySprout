@@ -1,4 +1,4 @@
-from typing import Literal, Optional
+from typing import Literal, List, Optional
 from pydantic import BaseModel
 
 
@@ -10,8 +10,54 @@ class StoryRequest(BaseModel):
     moral: str
     theme: str
     storyType: str
-    length: Literal["short", "medium", "lengthy"]
+    length: Literal["short", "medium"]
     artStyle: str
     ageLevel: Literal["3-5", "6-8", "9-12"]
     language: Optional[str] = "English"
     photoSketch: Optional[str] = None
+    # Optional JSON string with domain-specific answers (memory text, culture, era, etc.)
+    domainMeta: Optional[str] = None
+
+
+class ImagePageRequest(BaseModel):
+    """One page's worth of data needed to generate its illustration."""
+    pageNumber: int
+    text: str
+
+
+class ImageRequest(BaseModel):
+    """Request body for POST /generate-images."""
+    pages: List[ImagePageRequest]
+    # A plain-English description of the hero that stays identical every page,
+    # e.g. "Sam, a small cheerful blue seahorse with big round eyes"
+    characterDescription: str
+    # "color" or "sketch"
+    artStyle: str
+    # Stable seed keeps the character visually consistent across pages
+    seed: int = 42
+
+
+class ImagePageResult(BaseModel):
+    """Result for a single page."""
+    pageNumber: int
+    imageUrl: str
+    keywords: List[str]
+
+
+class ImageResponse(BaseModel):
+    """Response body from POST /generate-images."""
+    pages: List[ImagePageResult]
+
+
+class CoverImageRequest(BaseModel):
+    """Request body for POST /generate-cover-image."""
+    # A rich description of the hero and the overall story
+    storyPrompt: str
+    # "color" or "sketch"
+    artStyle: str
+    seed: int = 42
+
+
+class CoverImageResponse(BaseModel):
+    """Response body from POST /generate-cover-image."""
+    imageUrl: str

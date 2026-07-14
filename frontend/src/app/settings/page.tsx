@@ -9,7 +9,7 @@ import { SproutButton } from "@/components/ui/sprout-button";
 import { SproutBadge } from "@/components/ui/sprout-misc";
 import { useToast, ToastContainer } from "@/components/ui/sprout-misc";
 import { ProgressBar } from "@/components/ui/sprout-misc";
-import { useTheme } from "next-themes";
+import { useTheme } from "@/providers/theme-provider";
 
 const languages = [
   { code: "en", label: "English",  flag: "🇬🇧" },
@@ -108,7 +108,7 @@ export default function SettingsPage() {
             <div className="flex items-center gap-2">
               {mounted && (
                 <>
-                  {["light", "dark", "system"].map((t) => (
+                  {(["light", "dark", "system"] as const).map((t) => (
                     <motion.button
                       key={t}
                       whileHover={{ scale: 1.05 }}

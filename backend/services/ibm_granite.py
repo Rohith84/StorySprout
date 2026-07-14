@@ -22,22 +22,22 @@ logger = logging.getLogger(__name__)
 # Tamil / non-Latin scripts use more tokens per character, so these budgets
 # are generous.  "short" is intentionally kept modest so the model reliably
 # finishes the JSON rather than being cut off.
-_LENGTH_TOKENS = {"short": 2500, "medium": 4500, "lengthy": 8000}
+_LENGTH_TOKENS = {"short": 2500, "medium": 4500}
 
 # Page-text character limit per story length.  Shorter text = smaller JSON =
 # less chance of truncation.  These are soft guidance values embedded in the
 # prompt (not enforced in code).
-_PAGE_CHAR_HINT = {"short": 80, "medium": 100, "lengthy": 140}
+_PAGE_CHAR_HINT = {"short": 80, "medium": 100}
 
 # Languages that use non-Latin / logographic scripts and need tighter per-page
 # character limits to avoid JSON truncation.  Each value overrides _PAGE_CHAR_HINT
 # for that language.  Mandarin uses logographs (each char = more tokens), so the
 # limit is even tighter than Tamil/Hindi.
 _NON_LATIN_PAGE_CHAR_HINT: dict[str, dict[str, int]] = {
-    "tamil":            {"short": 60, "medium": 80, "lengthy": 110},
-    "hindi":            {"short": 60, "medium": 80, "lengthy": 110},
-    "arabic":           {"short": 60, "medium": 80, "lengthy": 110},
-    "mandarin chinese": {"short": 40, "medium": 55, "lengthy":  80},
+    "tamil":            {"short": 60, "medium": 80},
+    "hindi":            {"short": 60, "medium": 80},
+    "arabic":           {"short": 60, "medium": 80},
+    "mandarin chinese": {"short": 40, "medium": 55},
 }
 
 
@@ -135,7 +135,7 @@ def _sanitize_control_chars(text: str) -> str:
             elif ch == "\t":
                 out.append("\\t")
             elif 0x00 <= code <= 0x1f:
-                # Other ASCII control chars — replace with space to be safe
+                # Other ASCII control chars - replace with space to be safe
                 out.append(" ")
             else:
                 out.append(ch)
@@ -146,7 +146,7 @@ def _sanitize_control_chars(text: str) -> str:
 
 
 def _remove_trailing_commas(text: str) -> str:
-    """Remove trailing commas before ] or } — a common LLM mistake."""
+    """Remove trailing commas before ] or } - a common LLM mistake."""
     # e.g.  [1, 2, 3,]  →  [1, 2, 3]
     return re.sub(r",\s*([}\]])", r"\1", text)
 
@@ -235,8 +235,8 @@ def _sanitize_and_repair(raw: str) -> str:
 def _extract_json(raw: str) -> dict:
     """Parse raw model output into a dict, with multi-stage repair fallback.
 
-    Stage 1 — direct parse (fast path, works for well-formed output).
-    Stage 2 — sanitise + repair then parse (handles the common LLM defects:
+    Stage 1 - direct parse (fast path, works for well-formed output).
+    Stage 2 - sanitise + repair then parse (handles the common LLM defects:
                unescaped newlines, trailing commas, truncation).
 
     Logs a detailed diagnostic when both stages fail so we can see exactly
@@ -259,7 +259,7 @@ def _extract_json(raw: str) -> dict:
         logger.info("JSON parsed successfully after sanitise+repair.")
         return result
     except (ValueError, json.JSONDecodeError) as exc:
-        # Emit a detailed diagnostic (never the full API key — only the raw
+        # Emit a detailed diagnostic (never the full API key - only the raw
         # response snippet which may contain Tamil text)
         snippet = raw[:300].replace("\n", "\\n")
         logger.error(
@@ -278,9 +278,9 @@ def _extract_json(raw: str) -> dict:
 # Prompt construction
 # ---------------------------------------------------------------------------
 
-def _build_prompt(req: StoryRequest, strict: bool = False) -> str:
+def _build_prompt(req: StoryRequest, strict: bool = False, fact_corrections: str = "") -> str:
     hero_label = req.heroName if req.heroName else f"a {req.heroType}"
-    page_count = {"short": 5, "medium": 8, "lengthy": 14}[req.length]
+    page_count = {"short": 5, "medium": 8}.get(req.length, 8)
     page_char_hint = _PAGE_CHAR_HINT.get(req.length, 100)
 
     age_instructions = {
@@ -294,7 +294,8 @@ def _build_prompt(req: StoryRequest, strict: bool = False) -> str:
         ),
         "9-12": (
             "Use richer vocabulary, varied sentence lengths, and more layered plot details "
-            "appropriate for confident middle-grade readers."
+            "appropriate for confident middle-grade readers. "
+            "This affects word choice and sentence length ONLY."
         ),
     }[req.ageLevel]
 
@@ -310,7 +311,7 @@ def _build_prompt(req: StoryRequest, strict: bool = False) -> str:
         language_instruction = (
             f"LANGUAGE: Write ALL story content in {language}. "
             f"Title, every page text, quiz questions, options, answers, "
-            f"vocabulary words and meanings — ALL must be in {language}. "
+            f"vocabulary words and meanings - ALL must be in {language}. "
             f"Do NOT use English anywhere in the story content. "
             f"JSON SAFETY: Each page text must be ONE continuous sentence or short phrase "
             f"with NO literal newline characters inside any JSON string. "
@@ -333,7 +334,99 @@ def _build_prompt(req: StoryRequest, strict: bool = False) -> str:
         else ""
     )
 
+    # Build domain-specific context block when this is a domain-mode story
+    domain_block = ""
+    if req.storyType.startswith("domain:"):
+        import json as _json
+        meta: dict = {}
+        if req.domainMeta:
+            try:
+                meta = _json.loads(req.domainMeta)
+            except Exception:
+                meta = {}
+
+        if req.storyType == "domain:family":
+            memory_text  = meta.get("memory_text", req.incident)
+            people        = meta.get("people", "")
+            why_matters   = meta.get("why_matters", req.moral)
+            when          = meta.get("when", "")
+            where         = meta.get("where", req.theme)
+            people_line   = f"\n- People present: {people}" if people else ""
+            when_line     = f"\n- When it happened: {when}" if when else ""
+            domain_block = (
+                "\nDOMAIN: Family Memory\n"
+                "This story is based on a REAL personal memory shared by the creator.\n"
+                f"- The memory: {memory_text}"
+                f"{when_line}"
+                f"\n- Where it happened: {where}"
+                f"{people_line}"
+                f"\n- Why this memory matters: {why_matters}\n"
+                "Write a warm, emotionally resonant story that honours this real memory. "
+                "Preserve the emotional truth even while adapting it to a child-friendly narrative. "
+                "The tone should be gentle, nostalgic, and loving.\n"
+            )
+
+        elif req.storyType == "domain:cultural":
+            culture       = meta.get("culture", "")
+            passing_on    = meta.get("passing_on", req.incident)
+            topic         = meta.get("topic", req.incident)
+            where_set     = meta.get("where_set", req.theme)
+            family_why    = meta.get("family_why", "")
+            child_understand = meta.get("child_understand", req.lesson)
+            culture_line  = f"\n- Culture / heritage: {culture}" if culture else ""
+            family_line   = f"\n- Why this matters to this family: {family_why}" if family_why else ""
+            domain_block = (
+                "\nDOMAIN: Cultural & Heritage\n"
+                "This story passes on a cultural tradition, festival, or heritage practice.\n"
+                f"- What is being passed on: {passing_on}"
+                f"\n- Specific topic: {topic}"
+                f"{culture_line}"
+                f"\n- Where the story is set: {where_set}"
+                f"{family_line}"
+                f"\n- What the child should understand: {child_understand}\n"
+                "Write the story with deep cultural respect and accuracy. "
+                "Explain traditions and their meaning naturally through the story. "
+                "Celebrate the culture warmly and authentically.\n"
+            )
+
+        elif req.storyType == "domain:historical":
+            era           = meta.get("era", req.theme)
+            place         = meta.get("place", req.theme)
+            about         = meta.get("about", req.incident)
+            topic         = meta.get("topic", req.incident)
+            pov           = meta.get("pov", "a child living then")
+            child_learn   = meta.get("child_learn", req.lesson)
+            real_person   = meta.get("real_person", False)
+            real_person_warning = (
+                "\nIMPORTANT: A real historical person appears in this story. "
+                "Portray them respectfully and accurately based on historical record. "
+                "Do NOT invent quotes, actions, or beliefs not supported by history.\n"
+                if real_person else ""
+            )
+            domain_block = (
+                "\nDOMAIN: Historical\n"
+                "This story brings a real moment in history to life for a child.\n"
+                f"- Era / time period: {era}"
+                f"\n- Place / country: {place}"
+                f"\n- What the story is about: {about}"
+                f"\n- Specific topic or person: {topic}"
+                f"\n- Whose eyes we see it through: {pov}"
+                f"\n- What the child should learn: {child_learn}"
+                f"{real_person_warning}\n"
+                "Ensure historical facts, dates, and events are accurate. "
+                "Bring the period to life with authentic detail appropriate for the child's age.\n"
+            )
+
+    # Fact-check corrections block (only set on a regeneration pass)
+    corrections_block = (
+        f"\nFACT-CHECK CORRECTIONS TO APPLY:\n{fact_corrections}\n"
+        "You MUST incorporate all of the above corrections into this new version of the story.\n"
+        if fact_corrections else ""
+    )
+
     return f"""{strict_prefix}You are a children's story author. Write a complete, original, child-safe story.
+
+READING LEVEL NOTE: The reading level ({req.ageLevel}) affects ONLY vocabulary difficulty and sentence length. The plot, story events, characters, and total number of pages ({page_count}) must be IDENTICAL regardless of reading level.
 
 STORY REQUIREMENTS:
 - Hero: {hero_label} (type: {req.heroType})
@@ -348,20 +441,22 @@ STORY REQUIREMENTS:
 - Age guidance: {age_instructions}
 - Total pages: {page_count}
 - 100% child-safe: no violence, no fear, no scary content.
+{domain_block}{corrections_block}
 
-OUTPUT FORMAT — follow these rules exactly:
+OUTPUT FORMAT - follow these rules exactly:
 1. Output ONLY a raw JSON object. No markdown, no backticks, no ``` fences, no explanation.
 2. The output must begin with {{ and end with }} and nothing else.
-3. Every JSON string value must be on a single line — NO literal newline characters inside any string.
+3. Every JSON string value must be on a single line - NO literal newline characters inside any string.
 4. Do NOT use double-quote characters inside any string value.
 5. Keep page text SHORT: maximum {page_char_hint} characters each.
-6. Use EXACTLY this JSON shape:
+6. Only 3 pages should have an imagePrompt (the first, middle, and last page). All other pages must have "imagePrompt": null.
+7. Use EXACTLY this JSON shape:
 {{
   "title": "...",
   "pages": [
-    {{"pageNumber": 1, "text": "...", "imagePrompt": "..."}},
-    {{"pageNumber": 2, "text": "...", "imagePrompt": "..."}},
-    ... ({page_count} pages total)
+    {{"pageNumber": 1, "text": "...", "imagePrompt": "<detailed {req.artStyle} illustration prompt>"}},
+    {{"pageNumber": 2, "text": "...", "imagePrompt": null}},
+    ... (exactly {page_count} page objects, only the first, middle, and last pages have a non-null imagePrompt; all other pages must have "imagePrompt": null)
   ],
   "quiz": [
     {{"question": "...", "options": ["A", "B", "C", "D"], "answer": "A"}},
@@ -385,7 +480,7 @@ Begin the JSON object now:"""
 
 def _build_repair_prompt(broken_json: str, req: StoryRequest) -> str:
     """Ask the model to return ONLY a corrected JSON given the broken draft."""
-    page_count = {"short": 5, "medium": 8, "lengthy": 14}[req.length]
+    page_count = {"short": 5, "medium": 8}[req.length]
     language = req.language if req.language else "English"
 
     return f"""The following text is a partially broken JSON object for a children's story.
@@ -406,12 +501,12 @@ Corrected JSON:"""
 
 
 # ---------------------------------------------------------------------------
-# Input sanitisation — applied once before building the prompt
+# Input sanitisation - applied once before building the prompt
 # ---------------------------------------------------------------------------
 
 _SANITIZED_FIELDS = (
     "heroType", "heroName", "incident", "lesson", "moral", "theme",
-    "storyType", "artStyle",
+    "storyType", "artStyle", "domainMeta",
 )
 
 
@@ -424,7 +519,7 @@ def _sanitize_request(req: StoryRequest) -> StoryRequest:
             cleaned = sanitize_inputs(original)
             if cleaned != original:
                 logger.info(
-                    "Input sanitized — field=%s | before=%.60r | after=%.60r",
+                    "Input sanitized - field=%s | before=%.60r | after=%.60r",
                     field, original, cleaned,
                 )
             data[field] = cleaned
@@ -441,8 +536,8 @@ def _check_pages(story: dict) -> tuple[bool, list[dict]]:
     Returns
     -------
     (all_safe, audit_log)
-        ``all_safe`` — True when every page passed.
-        ``audit_log`` — list of dicts recording the verdict for every page.
+        ``all_safe`` - True when every page passed.
+        ``audit_log`` - list of dicts recording the verdict for every page.
     """
     pages = story.get("pages", [])
     audit: list[dict] = []
@@ -460,11 +555,108 @@ def _check_pages(story: dict) -> tuple[bool, list[dict]]:
             **({"warning": result["warning"]} if "warning" in result else {}),
         }
         audit.append(entry)
-        logger.info("Safety check — page %s: %s", page_num, entry)
+        logger.info("Safety check - page %s: %s", page_num, entry)
         if not safe:
             all_safe = False
 
     return all_safe, audit
+
+
+# ---------------------------------------------------------------------------
+# Fact-checker - runs after generation for Cultural and Historical domains
+# ---------------------------------------------------------------------------
+
+def _build_fact_check_prompt(story: dict, domain: str, domain_meta: str) -> str:
+    """Build a prompt that asks Granite to fact-check the generated story."""
+    story_text = json.dumps(
+        [{"page": p.get("pageNumber"), "text": p.get("text", "")}
+         for p in story.get("pages", [])],
+        ensure_ascii=False,
+    )
+    meta_hint = f"\nAdditional context provided by the creator: {domain_meta}" if domain_meta else ""
+    return f"""You are a fact-checking assistant for a children's educational story platform.
+
+Review the following children's story for factual accuracy.
+Domain: {domain}{meta_hint}
+
+Story pages:
+{story_text}
+
+Check for:
+- Incorrect dates, years, or time periods
+- Inaccurate historical events or their causes/outcomes
+- Misrepresentation of real historical or public figures
+- Inaccurate cultural practices, traditions, or their meanings
+- Scientific inaccuracies
+
+If a real historical person appears, flag if any quotes or actions appear to be invented or misrepresentative.
+
+Return ONLY valid JSON - no markdown, no explanation, no text outside the JSON.
+If the story is accurate:
+{{"accurate": true}}
+
+If there are issues:
+{{"accurate": false, "issues": [{{"claim": "<inaccurate claim from story>", "correction": "<what it should say>"}}], "historical_person_concern": false}}
+
+Begin JSON now:"""
+
+
+def _fact_check_story(story: dict, req: StoryRequest, model: "ModelInference") -> tuple[dict, list[dict], bool]:
+    """Run a fact-check pass on the story for Cultural and Historical domains.
+
+    Returns
+    -------
+    (corrected_story, fact_log, was_corrected)
+        ``corrected_story`` - the story dict (regenerated if corrections were needed).
+        ``fact_log``        - list of correction dicts for logging/transparency.
+        ``was_corrected``   - True if corrections were applied and story was regenerated.
+    """
+    domain_label = req.storyType.replace("domain:", "").replace("-", " ").title()
+    prompt = _build_fact_check_prompt(story, domain_label, req.domainMeta or "")
+
+    try:
+        raw = _call_model(model, prompt)
+        result = _extract_json(raw)
+    except Exception as exc:
+        logger.warning("Fact-check call failed - skipping: %s", exc)
+        return story, [], False
+
+    if result.get("accurate", True):
+        logger.info("Fact-check passed - story is accurate.")
+        return story, [], False
+
+    issues: list[dict] = result.get("issues", [])
+    historical_person_concern: bool = result.get("historical_person_concern", False)
+    logger.warning(
+        "Fact-check found %d issue(s): %s | historical_person_concern=%s",
+        len(issues), issues, historical_person_concern,
+    )
+
+    if not issues:
+        return story, [], False
+
+    # Build corrections string for the regeneration prompt
+    corrections_lines = "\n".join(
+        f"- Claim: {issue.get('claim', '')} → Correction: {issue.get('correction', '')}"
+        for issue in issues
+    )
+    if historical_person_concern:
+        corrections_lines += (
+            "\n- REAL PERSON WARNING: Portray all real historical figures "
+            "respectfully and accurately. Do not invent quotes or actions."
+        )
+
+    # Regenerate with corrections applied
+    logger.info("Regenerating story with fact-check corrections applied.")
+    corrected_prompt = _build_prompt(req, strict=False, fact_corrections=corrections_lines)
+    try:
+        raw2 = _call_model(model, corrected_prompt)
+        corrected_story = _extract_json(raw2)
+        logger.info("Fact-corrected story generated successfully.")
+        return corrected_story, issues, True
+    except Exception as exc:
+        logger.error("Fact-corrected regeneration failed - returning original: %s", exc)
+        return story, issues, False
 
 
 # ---------------------------------------------------------------------------
@@ -478,9 +670,9 @@ def generate_story(req: StoryRequest) -> dict:
     max_tokens = _LENGTH_TOKENS.get(req.length, 4500)
     model = _build_model(length=req.length)
 
-    def _generate_and_parse(strict: bool = False) -> dict:
+    def _generate_and_parse(strict: bool = False, fact_corrections: str = "") -> dict:
         """Call the model and parse JSON, with a repair-focused retry."""
-        prompt = _build_prompt(req, strict=strict)
+        prompt = _build_prompt(req, strict=strict, fact_corrections=fact_corrections)
         raw = _call_model(model, prompt, max_tokens=max_tokens)
 
         # Attempt 1: direct parse + sanitise/repair
@@ -492,7 +684,7 @@ def generate_story(req: StoryRequest) -> dict:
         except (ValueError, json.JSONDecodeError) as exc:
             first_exc = exc
             logger.warning(
-                "First JSON parse failed (%s) — sending repair prompt. "
+                "First JSON parse failed (%s) - sending repair prompt. "
                 "raw_snippet(150)=%r",
                 first_exc,
                 raw[:150].replace("\n", "\\n"),
@@ -518,7 +710,7 @@ def generate_story(req: StoryRequest) -> dict:
                 detail={
                     "error": "generation_failed",
                     "message": (
-                        "The story could not be generated right now — "
+                        "The story could not be generated right now - "
                         "the AI returned an incomplete response. "
                         "Please try again."
                     ),
@@ -528,20 +720,39 @@ def generate_story(req: StoryRequest) -> dict:
     # 2. First generation attempt
     story = _generate_and_parse(strict=False)
 
-    # 3. Safety-check every page
+    # 3. Fact-check pass - Cultural and Historical domains only
+    _FACT_CHECK_DOMAINS = ("domain:cultural", "domain:historical")
+    fact_log: list[dict] = []
+    if req.storyType in _FACT_CHECK_DOMAINS:
+        story, fact_log, _ = _fact_check_story(story, req, model)
+        story["_fact_checked"] = True
+        story["_fact_check_log"] = fact_log
+        logger.info(
+            "Fact-check complete - domain=%s corrections=%d",
+            req.storyType, len(fact_log),
+        )
+    else:
+        # Family Memory and all non-domain stories: no fact-check
+        story["_fact_checked"] = False
+
+    # 4. Safety-check every page (runs on ALL domains)
     all_safe, audit = _check_pages(story)
     story["_safety_audit"] = audit
 
     if all_safe:
         return story
 
-    # 4. One automatic retry with stricter, child-safer instructions
+    # 5. One automatic retry with stricter, child-safer instructions
     logger.warning(
-        "Story failed safety check — regenerating with strict prompt. "
+        "Story failed safety check - regenerating with strict prompt. "
         "Flagged pages: %s",
         [e for e in audit if not e["safe"]],
     )
     story_retry = _generate_and_parse(strict=True)
+    # Re-attach fact-check metadata after retry
+    story_retry["_fact_checked"] = story.get("_fact_checked", False)
+    story_retry["_fact_check_log"] = fact_log
+
     all_safe_retry, audit_retry = _check_pages(story_retry)
     story_retry["_safety_audit"] = audit_retry
 
@@ -549,7 +760,7 @@ def generate_story(req: StoryRequest) -> dict:
         logger.info("Retry passed safety check.")
         return story_retry
 
-    # 5. Both attempts failed safety — return structured error, never unsafe story
+    # 6. Both attempts failed safety - return structured error, never unsafe story
     logger.error(
         "Story still unsafe after retry. Returning friendly error. "
         "Retry audit: %s", audit_retry,
@@ -559,7 +770,7 @@ def generate_story(req: StoryRequest) -> dict:
         "message": (
             "We weren't able to create a story that meets our child-safety "
             "standards with these inputs. Please try different values for "
-            "the incident, theme, or hero — and we'll create a wonderful "
+            "the incident, theme, or hero - and we'll create a wonderful "
             "story for you!"
         ),
         "_safety_audit": audit_retry,

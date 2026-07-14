@@ -3,6 +3,7 @@ import { Baloo_2, Poppins } from "next/font/google";
 import { ThemeProvider } from "@/providers/theme-provider";
 import { SessionProvider } from "@/providers/session-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { auth } from "@/lib/auth";
 import "./globals.css";
 
 const baloo2 = Baloo_2({
@@ -10,6 +11,7 @@ const baloo2 = Baloo_2({
   variable: "--font-baloo",
   weight: ["400", "500", "600", "700", "800"],
   display: "swap",
+  preload: false,
 });
 
 const poppins = Poppins({
@@ -17,6 +19,7 @@ const poppins = Poppins({
   variable: "--font-poppins",
   weight: ["300", "400", "500", "600", "700"],
   display: "swap",
+  preload: false,
 });
 
 export const metadata: Metadata = {
@@ -45,7 +48,9 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const session = await auth();
+
   return (
     <html
       lang="en"
@@ -53,7 +58,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       suppressHydrationWarning
     >
       <body className="min-h-screen font-body antialiased">
-        <SessionProvider>
+        <SessionProvider session={session}>
           <ThemeProvider>
             <TooltipProvider>
               {children}

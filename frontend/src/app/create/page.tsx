@@ -3,8 +3,7 @@
 import * as React from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { ArrowRight, Wand2, BookOpen, ChevronLeft } from "lucide-react";
-import { GlassCard } from "@/components/ui/sprout-cards";
+import { ArrowRight, Wand2, BookOpen, Globe2, ChevronLeft } from "lucide-react";
 import { SproutBadge } from "@/components/ui/sprout-misc";
 
 const MODES = [
@@ -20,6 +19,7 @@ const MODES = [
     badgeVariant: "sky" as const,
     gradient: "linear-gradient(135deg, #6CC6FF 0%, #BFA7FF 100%)",
     hoverGlow: "#6CC6FF",
+    ctaLabel: "Create instantly",
   },
   {
     id: "build",
@@ -33,6 +33,21 @@ const MODES = [
     badgeVariant: "lavender" as const,
     gradient: "linear-gradient(135deg, #BFA7FF 0%, #FFD8A8 100%)",
     hoverGlow: "#BFA7FF",
+    ctaLabel: "Start building",
+  },
+  {
+    id: "domain",
+    href: "/create/domain",
+    icon: "🌍",
+    lucide: Globe2,
+    title: "Pass on real knowledge",
+    description:
+      "Share a family memory, a cultural tradition, or a moment from history — turned into a story your child will treasure.",
+    badge: "Family, Culture & History",
+    badgeVariant: "peach" as const,
+    gradient: "linear-gradient(135deg, #FFD8A8 0%, #B9FBC0 100%)",
+    hoverGlow: "#FFD8A8",
+    ctaLabel: "Choose your domain",
   },
 ] as const;
 
@@ -91,7 +106,7 @@ export default function CreatePage() {
         </motion.div>
 
         {/* Mode cards */}
-        <div className="grid md:grid-cols-2 gap-5">
+        <div className="grid md:grid-cols-3 gap-5">
           {MODES.map((mode, i) => {
             const isSelected = selected === mode.id;
             return (
@@ -161,10 +176,10 @@ export default function CreatePage() {
                     <div className="flex items-center justify-between">
                       <span
                         className="flex items-center gap-2 font-heading font-bold text-sm"
-                        style={{ color: mode.hoverGlow }}
+                        style={{ color: mode.hoverGlow === "#FFD8A8" ? "#b87c3a" : mode.hoverGlow }}
                       >
                         <mode.lucide size={16} />
-                        {mode.id === "quick" ? "Create instantly" : "Start building"}
+                        {mode.ctaLabel}
                       </span>
                       <motion.div
                         animate={{ x: isSelected ? 4 : 0 }}

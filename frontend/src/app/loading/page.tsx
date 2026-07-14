@@ -6,11 +6,11 @@ import Link from "next/link";
 import { CheckCircle2, Clock } from "lucide-react";
 
 const steps = [
-  { id: 1, label: "Generating Story",       emoji: "✍️",  color: "#6CC6FF", desc: "Crafting your personalised narrative..." },
-  { id: 2, label: "Creating Illustrations", emoji: "🎨",  color: "#BFA7FF", desc: "Drawing beautiful artwork for each page..." },
-  { id: 3, label: "Checking Safety",        emoji: "🛡️",  color: "#B9FBC0", desc: "Ensuring age-appropriate content..." },
-  { id: 4, label: "Building Quiz",          emoji: "🧩",  color: "#FFD8A8", desc: "Creating comprehension questions..." },
-  { id: 5, label: "Preparing PDF",          emoji: "📄",  color: "#FFE66D", desc: "Formatting your beautiful storybook..." },
+  { id: 1, label: "Generating Story",    emoji: "✍️",  color: "#6CC6FF", desc: "Crafting your personalised narrative..." },
+  { id: 2, label: "Checking Safety",     emoji: "🛡️",  color: "#B9FBC0", desc: "Ensuring age-appropriate content..." },
+  { id: 3, label: "Building Quiz",       emoji: "🧩",  color: "#FFD8A8", desc: "Creating comprehension questions..." },
+  { id: 4, label: "Painting Cover Art",  emoji: "🎨",  color: "#BFA7FF", desc: "Drawing your story's cover illustration..." },
+  { id: 5, label: "Almost ready!",       emoji: "📖",  color: "#FFE66D", desc: "Your storybook is coming to life..." },
 ];
 
 const magicParticles = Array.from({ length: 20 }, (_, i) => ({
@@ -84,7 +84,7 @@ export default function LoadingPage() {
   const [done, setDone] = React.useState(false);
 
   React.useEffect(() => {
-    const totalDuration = 12000; // 12 seconds total
+    const totalDuration = 8000; // 8 s — story text arrives fast, cover image loads async
     const stepDuration = totalDuration / steps.length;
 
     const progressInterval = setInterval(() => {
@@ -107,7 +107,7 @@ export default function LoadingPage() {
     return () => clearInterval(progressInterval);
   }, []);
 
-  const remaining = Math.max(0, Math.round((100 - progress) / 100 * 12));
+  const remaining = Math.max(0, Math.round((100 - progress) / 100 * 8));
 
   return (
     <div className="min-h-screen gradient-page flex flex-col items-center justify-center p-6 relative overflow-hidden">

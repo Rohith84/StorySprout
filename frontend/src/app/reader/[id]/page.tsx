@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import Link from "next/link";
 import {
   ChevronLeft, ChevronRight, Bookmark, Maximize2, ZoomIn, ZoomOut,
@@ -10,426 +10,1223 @@ import {
 import { SproutButton } from "@/components/ui/sprout-button";
 import { SproutBadge } from "@/components/ui/sprout-misc";
 import type { StoryResponse } from "@/lib/auth-types";
-import { STORY_SESSION_KEY } from "@/lib/auth-types";
+import { STORY_SESSION_KEY, PHOTO_SESSION_KEY } from "@/lib/auth-types";
 
-// Page-gradient palette cycles for visual variety
-const GRADIENTS = [
-  "linear-gradient(135deg, #B9FBC0 0%, #6CC6FF 100%)",
-  "linear-gradient(135deg, #FFD8A8 0%, #FFE66D 100%)",
-  "linear-gradient(135deg, #6CC6FF 0%, #BFA7FF 100%)",
-  "linear-gradient(135deg, #BFA7FF 0%, #FFD8A8 100%)",
-  "linear-gradient(135deg, #B9FBC0 0%, #BFA7FF 100%)",
+const FASTAPI_URL = process.env.NEXT_PUBLIC_FASTAPI_URL ?? "http://localhost:8000";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// THEME → ICON SETS
+// Each theme maps to 6 thematic emoji. The per-page picker chooses a subset of
+// 4–5 that best match the page text via simple keyword scoring.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const THEME_ICONS: Record<string, string[]> = {
+  adventure:  ["🗺️","🧭","🏔️","🌋","⛺","🎒"],
+  space:      ["🚀","⭐","🪐","🌙","☄️","🛸"],
+  sea:        ["🌊","🐠","🐬","🐚","🦀","🐙"],
+  magic:      ["✨","🧚","🦄","🐉","👑","🪄"],
+  animals:    ["🦁","🐒","🦋","🌿","🐘","🦜"],
+  dinos:      ["🦕","🦖","🌋","🦴","🥚","🌿"],
+  bedtime:    ["🌙","⭐","☁️","🧸","🕯️","😴"],
+  everyday:   ["🏡","🌳","🚲","🎒","🎂","🌸"],
+  // fallback for unknown themes
+  default:    ["✨","🌟","🌈","🍀","💫","🌸"],
+};
+
+// Map theme wizard IDs / keywords → icon key
+function resolveIconKey(theme: string | undefined): string {
+  if (!theme) return "default";
+  const t = theme.toLowerCase();
+  if (/adventure|journey|quest|explore/.test(t))    return "adventure";
+  if (/space|star|galaxy|moon|cosmic|planet/.test(t)) return "space";
+  if (/sea|ocean|water|marine|fish|under/.test(t))  return "sea";
+  if (/magic|fairy|wizard|dragon|unicorn/.test(t))  return "magic";
+  if (/animal|jungle|forest|nature|wild/.test(t))   return "animals";
+  if (/dino|dinosaur/.test(t))                      return "dinos";
+  if (/bedtime|sleep|night|calm|dream/.test(t))     return "bedtime";
+  if (/everyday|home|school|life/.test(t))          return "everyday";
+  return "default";
+}
+
+// Score how well an icon matches a page text by naive keyword presence
+const ICON_KEYWORDS: Record<string, string[]> = {
+  "🗺️":["map","adventure","journey","quest","path","route"],
+  "🧭":["compass","direction","find","lost","navigate"],
+  "🏔️":["mountain","hill","climb","peak","tall"],
+  "🌋":["volcano","fire","hot","erupt","lava"],
+  "⛺":["camp","tent","forest","night","stars"],
+  "🎒":["bag","pack","school","journey","carry"],
+  "🚀":["rocket","space","fly","launch","blast"],
+  "⭐":["star","shine","bright","light","wish"],
+  "🪐":["planet","ring","orbit","saturn","space"],
+  "🌙":["moon","night","sleep","dream","dark"],
+  "☄️":["comet","meteor","shoot","sky","fall"],
+  "🛸":["ufo","alien","fly","space","saucer"],
+  "🌊":["wave","sea","ocean","water","swim"],
+  "🐠":["fish","sea","swim","ocean","coral"],
+  "🐬":["dolphin","swim","ocean","jump","play"],
+  "🐚":["shell","beach","sand","sea","collect"],
+  "🦀":["crab","beach","pinch","sea","sand"],
+  "🐙":["octopus","tentacle","sea","deep","ocean"],
+  "✨":["magic","sparkle","twinkle","shine","glow","wonder"],
+  "🧚":["fairy","wing","tiny","fly","pixie"],
+  "🦄":["unicorn","horse","magic","rainbow","horn"],
+  "🐉":["dragon","fire","fly","wing","scale"],
+  "👑":["crown","king","queen","royal","princess","prince"],
+  "🪄":["wand","magic","spell","wizard","enchant"],
+  "🦁":["lion","brave","roar","jungle","pride"],
+  "🐒":["monkey","swing","jungle","tree","playful"],
+  "🦋":["butterfly","fly","flower","garden","flutter"],
+  "🌿":["leaf","plant","green","nature","grow"],
+  "🐘":["elephant","big","jungle","trunk","grey"],
+  "🦜":["parrot","bird","colour","jungle","talk"],
+  "🦕":["dinosaur","long","neck","ancient","prehistoric"],
+  "🦖":["dinosaur","teeth","roar","hunt","ancient"],
+  "🦴":["bone","dig","fossil","ancient","find"],
+  "🥚":["egg","hatch","nest","baby","born"],
+  "🧸":["bear","soft","toy","cuddle","cozy"],
+  "🕯️":["candle","light","glow","warm","dark"],
+  "😴":["sleep","dream","yawn","tired","bed"],
+  "🏡":["home","house","family","warm","cozy"],
+  "🌳":["tree","grow","tall","shade","leaf"],
+  "🚲":["bike","ride","wheel","road","fun"],
+  "🎂":["cake","birthday","celebrate","sweet","party"],
+  "🌸":["flower","pink","spring","bloom","pretty"],
+  "🌟":["star","shine","glow","bright","wish"],
+  "🌈":["rainbow","colour","sky","rain","bright"],
+  "🍀":["luck","clover","green","find","leaf"],
+  "💫":["spin","glow","magic","star","twinkle"],
+  "☁️":["cloud","sky","float","soft","white"],
+};
+
+/** Pick up to `count` icons from a set that best match the page text. */
+function pickPageIcons(icons: string[], pageText: string, count = 5): string[] {
+  const lower = pageText.toLowerCase();
+  const scored = icons.map((icon) => {
+    const kws = ICON_KEYWORDS[icon] ?? [];
+    const score = kws.reduce((s, kw) => s + (lower.includes(kw) ? 2 : 0), 0);
+    return { icon, score };
+  });
+  scored.sort((a, b) => b.score - a.score);
+  // Always take at least the top matched, fill remainder from the original set
+  const result = scored.slice(0, count).map((s) => s.icon);
+  return result;
+}
+
+// Stable seeded RNG
+function rng(seed: number) {
+  const x = Math.sin(seed + 1) * 10000;
+  return x - Math.floor(x);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FLOATING PAGE ICONS — decorative, stays on the margins, never over content
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Positions that hug the left/right margins and top/bottom edges,
+// deliberately staying away from the central text+image zone.
+const MARGIN_POSITIONS = [
+  // Left column (x ≤ 8%)
+  { x:  2, y: 10 }, { x:  4, y: 30 }, { x:  3, y: 55 }, { x:  5, y: 75 }, { x:  2, y: 90 },
+  // Right column (x ≥ 92%)
+  { x: 93, y: 12 }, { x: 95, y: 35 }, { x: 92, y: 60 }, { x: 94, y: 80 }, { x: 93, y: 92 },
+  // Top strip (y ≤ 6%)
+  { x: 25, y: 2  }, { x: 50, y: 3  }, { x: 75, y: 2  },
+  // Bottom strip (y ≥ 92%)
+  { x: 30, y: 94 }, { x: 65, y: 95 },
 ];
-const ILLUSTRATIONS = ["📖", "🌟", "✨", "🎨", "🌈", "🦋", "🌙", "⭐", "🌿", "🪄"];
 
-// Fallback sample story shown when no session data is available
-const SAMPLE_PAGES = [
-  {
-    pageNum: 1,
-    illustration: "🌲",
-    gradient: GRADIENTS[0],
-    text: "Once upon a time, in a forest where the trees sang lullabies and the rivers whispered secrets, a tiny fox named Ember discovered a glowing door hidden beneath the oldest oak tree.",
-    title: "The Enchanted Forest",
-  },
-  {
-    pageNum: 2,
-    illustration: "🦊",
-    gradient: GRADIENTS[1],
-    text: "\"What could be behind this door?\" Ember wondered, her bushy tail wagging with excitement. She pressed her tiny paw against the warm wood, and with a soft creak, the door swung open.",
-    title: "The Discovery",
-  },
-  {
-    pageNum: 3,
-    illustration: "✨",
-    gradient: GRADIENTS[2],
-    text: "Beyond the door was a world made entirely of starlight. Crystal trees sparkled like diamonds, and tiny fireflies danced in patterns that told ancient stories of the forest.",
-    title: "A Starlight World",
-  },
-  {
-    pageNum: 4,
-    illustration: "🌟",
-    gradient: GRADIENTS[3],
-    text: "A wise old owl greeted Ember with a warm smile. \"Welcome, little one. You've been chosen to hear the oldest story of all – the story of how the stars first learned to shine.\"",
-    title: "The Wise Owl",
-  },
-  {
-    pageNum: 5,
-    illustration: "🌙",
-    gradient: GRADIENTS[4],
-    text: "As the owl told his tale, the night sky filled with dancing lights. Ember listened with wide eyes and an even wider heart, knowing she would carry this story home to share with all her forest friends.",
-    title: "The End",
-  },
+function FloatingPageIcons({
+  theme,
+  pageText,
+  darkMode,
+  pageKey,
+}: {
+  theme: string | undefined;
+  pageText: string;
+  darkMode: boolean;
+  pageKey: number;
+}) {
+  const prefersReduced = useReducedMotion();
+
+  const icons = React.useMemo(() => {
+    const iconKey = resolveIconKey(theme);
+    const pool = THEME_ICONS[iconKey] ?? THEME_ICONS.default;
+    const picked = pickPageIcons(pool, pageText, 5);
+
+    return MARGIN_POSITIONS.slice(0, 10).map((pos, i) => {
+      const icon = picked[i % picked.length];
+      return {
+        id:    i,
+        icon,
+        x:     pos.x + rng(pageKey * 17 + i * 3) * 2 - 1,   // ±1% jitter
+        y:     pos.y + rng(pageKey * 19 + i * 5) * 3 - 1.5, // ±1.5% jitter
+        size:  14 + rng(pageKey * 7  + i * 11) * 8,          // 14–22px
+        delay: rng(pageKey * 13 + i * 7) * 4,                // 0–4s
+        dur:   8  + rng(pageKey * 11 + i * 9) * 6,           // 8–14s
+        kind:  (i % 3) as 0 | 1 | 2,                         // drift pattern
+      };
+    });
+  // recompute when pageKey changes so the icons match the new page
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pageKey, theme]);
+
+  const opacity = darkMode ? 0.22 : 0.16;
+
+  return (
+    <>
+      {icons.map((p) =>
+        prefersReduced ? (
+          // Reduced motion: static icons, no animation
+          <span
+            key={p.id}
+            aria-hidden="true"
+            className="absolute pointer-events-none select-none"
+            style={{
+              left:     `${p.x}%`,
+              top:      `${p.y}%`,
+              fontSize: p.size,
+              opacity,
+            }}
+          >
+            {p.icon}
+          </span>
+        ) : (
+          <motion.span
+            key={p.id}
+            aria-hidden="true"
+            className="absolute pointer-events-none select-none"
+            style={{ left: `${p.x}%`, top: `${p.y}%`, fontSize: p.size, opacity }}
+            animate={
+              p.kind === 0
+                ? { y: [0, -14, 0],       opacity: [opacity, opacity * 1.7, opacity] }
+                : p.kind === 1
+                ? { rotate: [-6, 6, -6],  y: [0, -8, 0], opacity: [opacity, opacity * 1.5, opacity] }
+                : { x: [0, 10, 0],        opacity: [opacity, opacity * 1.6, opacity] }
+            }
+            transition={{ duration: p.dur, repeat: Infinity, delay: p.delay, ease: "easeInOut" }}
+          >
+            {p.icon}
+          </motion.span>
+        )
+      )}
+    </>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PAGE COLOUR TINTS (warm cream palette — light mode)
+// ─────────────────────────────────────────────────────────────────────────────
+
+const PAGE_TINTS = [
+  { accent: "#C87533", text: "#3A1800", blob1: "#FFE082", blob2: "#FFCC80" },
+  { accent: "#2E7CBF", text: "#012244", blob1: "#B3E5FC", blob2: "#80DEEA" },
+  { accent: "#6A3EB8", text: "#220050", blob1: "#E8E0FF", blob2: "#D8C8FF" },
+  { accent: "#2A7A40", text: "#0A3A1A", blob1: "#C8F7C5", blob2: "#A9E8A6" },
+  { accent: "#B5254F", text: "#420022", blob1: "#FFB3CB", blob2: "#FF80AB" },
 ];
 
-function useStoryPages() {
-  const [pages, setPages] = React.useState(SAMPLE_PAGES);
-  const [storyTitle, setStoryTitle] = React.useState("My Story");
+// Warm paper constants
+const PAPER_LIGHT    = "#FBF7EE";   // page face (cream)
+const PAPER_DARK     = "#10162a";   // dark-mode page face
+const PAPER_GRAIN    = "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E\")";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TYPES
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface ReaderPage {
+  pageNum:      number;
+  text:         string;
+  imageUrl:     string;
+  imageLoading: boolean;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SAMPLE FALLBACK STORY
+// ─────────────────────────────────────────────────────────────────────────────
+
+const SAMPLE_PAGES: ReaderPage[] = [
+  { pageNum: 1, text: "Once upon a time, in a forest where the trees sang lullabies and the rivers whispered secrets, a tiny fox named Ember discovered a glowing door hidden beneath the oldest oak tree.", imageUrl: "", imageLoading: false },
+  { pageNum: 2, text: "\"What could be behind this door?\" Ember wondered, her bushy tail wagging with excitement. She pressed her tiny paw against the warm wood, and with a soft creak, the door swung open.", imageUrl: "", imageLoading: false },
+  { pageNum: 3, text: "Beyond the door was a world made entirely of starlight. Crystal trees sparkled like diamonds, and tiny fireflies danced in patterns that told ancient stories of the forest.", imageUrl: "", imageLoading: false },
+  { pageNum: 4, text: "A wise old owl greeted Ember with a warm smile. \"Welcome, little one. You've been chosen to hear the oldest story of all – the story of how the stars first learned to shine.\"", imageUrl: "", imageLoading: false },
+  { pageNum: 5, text: "As the owl told his tale, the night sky filled with dancing lights. Ember listened with wide eyes and an even wider heart, knowing she would carry this story home to share with all her forest friends.", imageUrl: "", imageLoading: false },
+];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DATA HOOK
+// ─────────────────────────────────────────────────────────────────────────────
+
+function useStoryData() {
+  const [pages,          setPages]          = React.useState<ReaderPage[]>(SAMPLE_PAGES);
+  const [storyTitle,     setStoryTitle]     = React.useState("My Story");
+  const [storyTheme,     setStoryTheme]     = React.useState<string | undefined>(undefined);
+  const [factChecked,    setFactChecked]    = React.useState(false);
+  const [coverImageUrl,  setCoverImageUrl]  = React.useState<string | null>(null);
+  const [coverLoading,   setCoverLoading]   = React.useState(false);
+  const [parentPhotoUrl, setParentPhotoUrl] = React.useState<string | null>(null);
+  const [sketchUrl,      setSketchUrl]      = React.useState<string | null>(null);
+  const [sketchLoading,  setSketchLoading]  = React.useState(false);
 
   React.useEffect(() => {
     if (typeof window === "undefined") return;
+
+    // 1. Creator photo (privacy: stays in sessionStorage, never sent to server)
+    const savedPhoto = sessionStorage.getItem(PHOTO_SESSION_KEY);
+    if (savedPhoto) {
+      setParentPhotoUrl(savedPhoto);
+      setSketchLoading(true);
+      const sketchPrompt = encodeURIComponent(
+        "soft pencil sketch portrait, warm gentle drawing, delicate line art, " +
+        "children's book author illustration, cozy and loving, sepia tones, " +
+        "simple clean lines, no background clutter, hand-drawn feel"
+      );
+      const sketchImgUrl = `https://image.pollinations.ai/prompt/${sketchPrompt}?width=512&height=512&seed=7&nologo=true&model=flux`;
+      const img = new Image();
+      img.onload  = () => { setSketchUrl(sketchImgUrl); setSketchLoading(false); };
+      img.onerror = () => setSketchLoading(false);
+      img.src = sketchImgUrl;
+    }
+
+    // 2. Story
     const raw = sessionStorage.getItem(STORY_SESSION_KEY);
     if (!raw) return;
+    let story: StoryResponse;
     try {
-      const story = JSON.parse(raw) as StoryResponse;
+      story = JSON.parse(raw) as StoryResponse;
       if (!story.pages?.length) return;
-      setStoryTitle(story.title);
-      setPages(
-        story.pages.map((p, i) => ({
-          pageNum: p.pageNumber,
-          illustration: ILLUSTRATIONS[i % ILLUSTRATIONS.length],
-          gradient: GRADIENTS[i % GRADIENTS.length],
-          text: p.text,
-          title: i === story.pages.length - 1 ? "The End" : story.title,
-        }))
-      );
-    } catch {
-      // malformed JSON — keep sample
+    } catch { return; }
+
+    setStoryTitle(story.title);
+    setStoryTheme(story.theme);
+    setFactChecked(story._fact_checked === true);
+
+    const basePages: ReaderPage[] = story.pages.map((p) => ({
+      pageNum:      p.pageNumber,
+      text:         p.text,
+      imageUrl:     p.imageUrl ?? "",
+      imageLoading: !(p.imageUrl),
+    }));
+    setPages(basePages);
+
+    // 3. Cover image
+    if (story.coverImageUrl) {
+      setCoverImageUrl(story.coverImageUrl);
+    } else {
+      const heroDesc    = story.heroDescription ?? "a cheerful friendly cartoon character";
+      const firstPrompt = story.pages[0]?.imagePrompt ?? "";
+      const storyPrompt = firstPrompt ? `${heroDesc}, ${firstPrompt}` : `${heroDesc}, ${story.title}`;
+      setCoverLoading(true);
+      fetch(`${FASTAPI_URL}/generate-cover-image`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ storyPrompt, artStyle: story.artStyle ?? "color", seed: 42 }),
+      })
+        .then((r) => r.json())
+        .then((d: { imageUrl?: string }) => {
+          if (!d.imageUrl) return;
+          setCoverImageUrl(d.imageUrl);
+          try {
+            sessionStorage.setItem(STORY_SESSION_KEY, JSON.stringify({ ...story, coverImageUrl: d.imageUrl }));
+          } catch { /* quota */ }
+        })
+        .catch(console.error)
+        .finally(() => setCoverLoading(false));
     }
+
+    // 4. Per-page images (non-blocking)
+    const need = story.pages.filter((p) => !p.imageUrl);
+    if (!need.length) return;
+    fetch(`${FASTAPI_URL}/generate-images`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        pages: need.map((p) => ({ pageNumber: p.pageNumber, text: p.text })),
+        characterDescription: story.heroDescription ?? "a cheerful friendly cartoon character",
+        artStyle: story.artStyle ?? "color",
+        seed: 42,
+      }),
+    })
+      .then((r) => r.json())
+      .then((d: { pages?: { pageNumber: number; imageUrl: string }[] }) => {
+        if (!d.pages?.length) return;
+        const urlMap: Record<number, string> = {};
+        d.pages.forEach((p) => { if (p.imageUrl) urlMap[p.pageNumber] = p.imageUrl; });
+        setPages((prev) =>
+          prev.map((p) => urlMap[p.pageNum]
+            ? { ...p, imageUrl: urlMap[p.pageNum], imageLoading: false }
+            : { ...p, imageLoading: false }
+          )
+        );
+        try {
+          const updatedPages = story.pages.map((sp) =>
+            urlMap[sp.pageNumber] ? { ...sp, imageUrl: urlMap[sp.pageNumber] } : sp
+          );
+          sessionStorage.setItem(STORY_SESSION_KEY, JSON.stringify({ ...story, pages: updatedPages }));
+        } catch { /* quota */ }
+      })
+      .catch(console.error);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  return { pages, storyTitle };
+  return { pages, storyTitle, storyTheme, factChecked, coverImageUrl, coverLoading, parentPhotoUrl, sketchUrl, sketchLoading };
 }
 
-export default function ReaderPage() {
-  const { pages, storyTitle } = useStoryPages();
-  const [current, setCurrent] = React.useState(0);
-  const [bookmarked, setBookmarked] = React.useState<Set<number>>(new Set());
-  const [zoom, setZoom] = React.useState(1);
-  const [darkMode, setDarkMode] = React.useState(false);
-  const [fullscreen, setFullscreen] = React.useState(false);
-  const [direction, setDirection] = React.useState(1);
-  const [narrating, setNarrating] = React.useState(false);
+// ─────────────────────────────────────────────────────────────────────────────
+// PAGE IMAGE (lazy-load with placeholder)
+// ─────────────────────────────────────────────────────────────────────────────
 
-  // Keep a ref to the active utterance so we can cancel it at any time
+function PageImage({ imageUrl, imageLoading, tint, altText }: {
+  imageUrl:     string;
+  imageLoading: boolean;
+  tint:         typeof PAGE_TINTS[number];
+  altText:      string;
+}) {
+  const [loaded, setLoaded] = React.useState(false);
+  React.useEffect(() => { setLoaded(false); }, [imageUrl]);
+  if (!imageUrl && !imageLoading) return null;
+
+  return (
+    <div
+      className="relative w-full rounded-xl overflow-hidden shadow-sm"
+      style={{
+        aspectRatio: "4/3",
+        background: `linear-gradient(135deg, ${tint.blob1}55, ${tint.blob2}55)`,
+      }}
+    >
+      {(imageLoading || (!imageUrl && !loaded)) && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
+          <motion.span
+            animate={{ rotate: 360 }}
+            transition={{ duration: 9, repeat: Infinity, ease: "linear" }}
+            style={{ fontSize: 28 }}
+            aria-hidden
+          >
+            🎨
+          </motion.span>
+          <p className="text-xs font-body opacity-50" style={{ color: tint.text }}>
+            Painting the scene…
+          </p>
+        </div>
+      )}
+      {imageUrl && (
+        <motion.img
+          src={`${FASTAPI_URL}${imageUrl}`}
+          alt={altText}
+          className="w-full h-full object-cover"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: loaded ? 1 : 0 }}
+          transition={{ duration: 0.6 }}
+          onLoad={() => setLoaded(true)}
+        />
+      )}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SINGLE BOOK PAGE FACE
+// Renders all content for one page (image + text). Used for both sides of the
+// open-book spread and for the single-page mobile view.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function BookPageFace({
+  page,
+  tint,
+  isFirst,
+  coverImageUrl,
+  coverLoading,
+  storyTitle,
+  bookmarked,
+  narrating,
+  darkMode,
+  storyTheme,
+  pageKey,
+  side,       // "left" | "right" | "single" — affects spine shadow
+}: {
+  page:          ReaderPage;
+  tint:          typeof PAGE_TINTS[number];
+  isFirst:       boolean;
+  coverImageUrl: string | null;
+  coverLoading:  boolean;
+  storyTitle:    string;
+  bookmarked:    boolean;
+  narrating:     boolean;
+  darkMode:      boolean;
+  storyTheme:    string | undefined;
+  pageKey:       number;
+  side:          "left" | "right" | "single";
+}) {
+  const paperBg   = darkMode ? PAPER_DARK : PAPER_LIGHT;
+  const textColor = darkMode ? "rgba(255,255,255,0.88)" : tint.text;
+
+  // Spine-side inner shadow: on the right face the shadow is on the left edge; vice versa.
+  const spineShadow = side === "right"
+    ? "inset 18px 0 28px -12px rgba(0,0,0,0.12)"
+    : side === "left"
+    ? "inset -18px 0 28px -12px rgba(0,0,0,0.10)"
+    : "none";
+
+  return (
+    <div
+      className="relative flex flex-col h-full overflow-hidden"
+      style={{
+        background:      paperBg,
+        backgroundImage: PAPER_GRAIN,
+        backgroundBlendMode: "multiply",
+        boxShadow:       spineShadow,
+      }}
+    >
+      {/* Floating theme icons — margin decorations */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden>
+        <FloatingPageIcons
+          theme={storyTheme}
+          pageText={page.text}
+          darkMode={darkMode}
+          pageKey={pageKey}
+        />
+      </div>
+
+      {/* Page header */}
+      <div
+        className="relative flex items-center justify-between px-5 pt-4 pb-3 shrink-0"
+        style={{ borderBottom: `1px solid ${darkMode ? "rgba(255,255,255,0.06)" : tint.accent + "28"}` }}
+      >
+        <div>
+          {isFirst && (
+            <p
+              className="text-[10px] font-heading font-bold uppercase tracking-[0.18em] mb-0.5"
+              style={{ color: darkMode ? "rgba(255,255,255,0.35)" : tint.accent + "bb" }}
+            >
+              ✦ Story
+            </p>
+          )}
+          <h2
+            className="font-heading font-extrabold leading-tight"
+            style={{
+              fontSize: "clamp(0.95rem, 2vw, 1.15rem)",
+              color: textColor,
+            }}
+          >
+            {isFirst ? storyTitle : "…continued"}
+          </h2>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          {bookmarked && (
+            <motion.div initial={{ y: -8 }} animate={{ y: 0 }}>
+              <Bookmark size={15} className="fill-[#FFE066] stroke-[#b8860b]" />
+            </motion.div>
+          )}
+          <SproutBadge variant="solid" className="text-[10px]">p.{page.pageNum}</SproutBadge>
+        </div>
+      </div>
+
+      {/* Illustration */}
+      <div className="relative px-5 pt-4 shrink-0">
+        {isFirst ? (
+          /* Cover image on page 1 */
+          <div
+            className="relative w-full rounded-xl overflow-hidden shadow-sm"
+            style={{ aspectRatio: "16/7" }}
+          >
+            <AnimatePresence mode="wait">
+              {coverImageUrl ? (
+                <motion.img
+                  key="cover"
+                  src={`${FASTAPI_URL}${coverImageUrl}`}
+                  alt={`Cover illustration for ${storyTitle}`}
+                  className="w-full h-full object-cover"
+                  initial={{ opacity: 0, scale: 1.04 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.9 }}
+                />
+              ) : (
+                <motion.div
+                  key="cover-ph"
+                  className="w-full h-full flex flex-col items-center justify-center gap-2"
+                  style={{ background: `linear-gradient(135deg, ${tint.blob1}, ${tint.blob2})` }}
+                  initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                >
+                  <motion.span
+                    animate={{ scale: [1, 1.12, 1] }}
+                    transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}
+                    style={{ fontSize: 36 }} aria-hidden
+                  >
+                    📖
+                  </motion.span>
+                  {coverLoading && (
+                    <p className="text-xs font-body text-white/60">Painting your cover…</p>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        ) : (
+          <PageImage
+            imageUrl={page.imageUrl}
+            imageLoading={page.imageLoading}
+            tint={tint}
+            altText={`Illustration for page ${page.pageNum}`}
+          />
+        )}
+      </div>
+
+      {/* Story text */}
+      <div className="relative flex-1 overflow-y-auto px-5 pt-4 pb-5">
+        <motion.p
+          key={page.pageNum}
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="font-body leading-[1.9] select-text"
+          style={{
+            fontSize:   "clamp(0.9rem, 1.6vw, 1.05rem)",
+            color:      textColor,
+            lineHeight: "1.9",
+          }}
+        >
+          {page.text}
+        </motion.p>
+      </div>
+
+      {/* Narrating pill */}
+      {narrating && (
+        <div className="flex justify-center pb-3 shrink-0">
+          <motion.div
+            className="flex items-center gap-1.5 bg-black/20 text-white text-xs px-3 py-1.5 rounded-full backdrop-blur-sm font-body"
+            animate={{ opacity: [0.7, 1, 0.7] }}
+            transition={{ duration: 2, repeat: Infinity }}
+          >
+            <Volume2 size={11} />
+            <span>Narrating…</span>
+            {[0, 1, 2].map((d) => (
+              <motion.div key={d} className="w-1 h-1 rounded-full bg-white"
+                animate={{ scale: [1, 2, 1], opacity: [0.5, 1, 0.5] }}
+                transition={{ duration: 0.6, repeat: Infinity, delay: d * 0.15 }}
+              />
+            ))}
+          </motion.div>
+        </div>
+      )}
+
+      {/* Bottom page number */}
+      <div
+        className="text-center pb-2 pt-1 text-[11px] font-body shrink-0"
+        style={{ color: darkMode ? "rgba(255,255,255,0.2)" : tint.accent + "66" }}
+      >
+        — {page.pageNum} —
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CREDIT / "CREATED BY" FINAL PAGE
+// ─────────────────────────────────────────────────────────────────────────────
+
+function CreditPageFace({
+  parentPhotoUrl, sketchUrl, sketchLoading, storyTitle, darkMode, side,
+}: {
+  parentPhotoUrl: string | null;
+  sketchUrl:      string | null;
+  sketchLoading:  boolean;
+  storyTitle:     string;
+  darkMode:       boolean;
+  side:           "left" | "right" | "single";
+}) {
+  const paperBg = darkMode ? PAPER_DARK : "#FFF6ED";
+  const spineShadow = side === "right"
+    ? "inset 18px 0 28px -12px rgba(0,0,0,0.12)"
+    : side === "left"
+    ? "inset -18px 0 28px -12px rgba(0,0,0,0.10)"
+    : "none";
+
+  return (
+    <div
+      className="relative flex flex-col items-center justify-center gap-5 h-full px-8 py-10 text-center overflow-hidden"
+      style={{
+        background:          paperBg,
+        backgroundImage:     PAPER_GRAIN,
+        backgroundBlendMode: "multiply",
+        boxShadow:           spineShadow,
+      }}
+    >
+      {/* Corner flourishes */}
+      {["top-3 left-3","top-3 right-3","bottom-3 left-3","bottom-3 right-3"].map((pos) => (
+        <div key={pos} className={`absolute ${pos} text-xl select-none pointer-events-none`}
+          style={{ opacity: 0.12, color: darkMode ? "#ffffff" : "#8B4513" }} aria-hidden>
+          ✦
+        </div>
+      ))}
+
+      {parentPhotoUrl && (
+        <div className="relative">
+          <AnimatePresence mode="wait">
+            {sketchLoading ? (
+              <motion.div key="sl"
+                className="w-32 h-32 rounded-full flex items-center justify-center"
+                style={{ background: "#F5ECD7", border: "2.5px dashed #C4956A50" }}
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                <motion.span
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
+                  style={{ fontSize: 24 }}
+                >✏️</motion.span>
+              </motion.div>
+            ) : sketchUrl ? (
+              <motion.div key="sd"
+                className="relative w-32 h-32 rounded-full overflow-hidden shadow-md"
+                style={{ border: "2.5px solid #C4956A44" }}
+                initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.8 }}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={parentPhotoUrl} alt="Story creator"
+                  className="absolute inset-0 w-full h-full object-cover"
+                  style={{ filter: "sepia(60%) brightness(1.1) contrast(0.85)" }} />
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={sketchUrl} alt="" aria-hidden
+                  className="absolute inset-0 w-full h-full object-cover mix-blend-multiply opacity-55" />
+                <div className="absolute inset-0 rounded-full"
+                  style={{ background: "radial-gradient(ellipse at center,transparent 50%,rgba(160,100,40,0.22) 100%)" }} />
+              </motion.div>
+            ) : (
+              <motion.div key="sf"
+                className="w-32 h-32 rounded-full overflow-hidden shadow-md"
+                style={{ border: "2.5px solid #C4956A44" }}
+                initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={parentPhotoUrl} alt="Story creator"
+                  className="w-full h-full object-cover"
+                  style={{ filter: "sepia(50%) brightness(1.15) contrast(0.9)" }} />
+              </motion.div>
+            )}
+          </AnimatePresence>
+          <motion.div
+            className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full flex items-center justify-center shadow"
+            style={{ background: "#FFB6C1", fontSize: 14 }}
+            animate={{ scale: [1, 1.12, 1] }}
+            transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
+            aria-hidden
+          >💛</motion.div>
+        </div>
+      )}
+
+      <motion.p
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.3, duration: 0.6 }}
+        className="font-heading font-extrabold"
+        style={{ fontSize: "clamp(1.2rem, 3vw, 1.6rem)", color: darkMode ? "#FFD8A8" : "#7A3800" }}
+      >
+        ✦ The End ✦
+      </motion.p>
+
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.5, duration: 0.6 }}
+        className="space-y-1.5"
+      >
+        <p className="font-heading font-semibold text-sm"
+          style={{ color: darkMode ? "rgba(255,255,255,0.82)" : "#5A2E05" }}>
+          {`"${storyTitle}"`}
+        </p>
+        <p className="font-body text-xs leading-relaxed max-w-[18ch] mx-auto"
+          style={{ color: darkMode ? "rgba(255,255,255,0.5)" : "#8C5A30" }}>
+          A story imagined and shared with love.
+        </p>
+        <p className="font-body text-[11px]"
+          style={{ color: darkMode ? "rgba(255,255,255,0.3)" : "#A07050" }}>
+          Made with StorySprout 🌱
+        </p>
+      </motion.div>
+
+      <div className="flex items-center gap-3 w-full max-w-[14rem] opacity-25">
+        <div className="flex-1 h-px" style={{ background: darkMode ? "#fff" : "#C4956A" }} />
+        <span style={{ color: darkMode ? "#fff" : "#C4956A", fontSize: 11 }}>❧</span>
+        <div className="flex-1 h-px" style={{ background: darkMode ? "#fff" : "#C4956A" }} />
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// OPEN-BOOK WRAPPER
+// Two facing pages with centre spine crease, drop shadow, rounded corners.
+// On mobile collapses to a single page.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function OpenBook({
+  leftContent,
+  rightContent,
+  darkMode,
+}: {
+  leftContent:  React.ReactNode;
+  rightContent: React.ReactNode;
+  darkMode:     boolean;
+}) {
+  const coverBg  = darkMode ? "#1e2840" : "#D4A96A";
+  const spineBg  = darkMode
+    ? "linear-gradient(to right, rgba(255,255,255,0.04), rgba(255,255,255,0.02), rgba(255,255,255,0.04))"
+    : "linear-gradient(to right, rgba(0,0,0,0.12), rgba(0,0,0,0.06), rgba(0,0,0,0.12))";
+  const bookShadow = darkMode
+    ? "0 32px 64px rgba(0,0,0,0.7), 0 8px 24px rgba(0,0,0,0.5)"
+    : "0 28px 56px rgba(100,60,0,0.22), 0 6px 20px rgba(100,60,0,0.14)";
+
+  return (
+    /* Desktop: open book — two pages side by side */
+    <div
+      className="hidden md:flex relative rounded-2xl overflow-hidden"
+      style={{
+        boxShadow:       bookShadow,
+        border:          darkMode ? "1px solid rgba(255,255,255,0.06)" : "1px solid rgba(160,100,0,0.18)",
+        backgroundColor: coverBg,
+      }}
+    >
+      {/* Left page */}
+      <div className="flex-1 relative" style={{ minHeight: "72vh", maxHeight: "82vh" }}>
+        {leftContent}
+        {/* Page-edge curl hint: tiny gradient on outer-left */}
+        <div className="absolute top-0 left-0 bottom-0 w-3 pointer-events-none"
+          style={{ background: darkMode
+            ? "linear-gradient(to right,rgba(0,0,0,0.18),transparent)"
+            : "linear-gradient(to right,rgba(80,40,0,0.08),transparent)" }} />
+      </div>
+
+      {/* Centre spine */}
+      <div className="relative z-10 flex-shrink-0 w-[18px] pointer-events-none" style={{ minHeight: "72vh" }}>
+        {/* Spine crease gradient */}
+        <div className="absolute inset-0" style={{ background: spineBg }} />
+        {/* Subtle vertical line */}
+        <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-px"
+          style={{ background: darkMode ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.10)" }} />
+        {/* Top/bottom stitch dots */}
+        {[8, 20, 32, 44, 56, 68, 80, 92].map((pct) => (
+          <div key={pct}
+            className="absolute left-1/2 -translate-x-1/2 w-1 h-1 rounded-full"
+            style={{ top: `${pct}%`, background: darkMode ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.12)" }}
+          />
+        ))}
+      </div>
+
+      {/* Right page */}
+      <div className="flex-1 relative" style={{ minHeight: "72vh", maxHeight: "82vh" }}>
+        {rightContent}
+        {/* Page-edge curl hint: tiny gradient on outer-right */}
+        <div className="absolute top-0 right-0 bottom-0 w-3 pointer-events-none"
+          style={{ background: darkMode
+            ? "linear-gradient(to left,rgba(0,0,0,0.18),transparent)"
+            : "linear-gradient(to left,rgba(80,40,0,0.08),transparent)" }} />
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PAGE-TURN ANIMATION WRAPPER
+// ─────────────────────────────────────────────────────────────────────────────
+
+const CURL_VARIANTS = {
+  enter: (d: number) => ({
+    x:        d > 0 ? "55%" : "-55%",
+    rotateY:  d > 0 ? 18 : -18,
+    opacity:  0.55,
+    boxShadow: "0 0 0 rgba(0,0,0,0)",
+  }),
+  center: {
+    x:         "0%",
+    rotateY:   0,
+    opacity:   1,
+    boxShadow: "0 24px 48px rgba(0,0,0,0.18)",
+  },
+  exit: (d: number) => ({
+    x:         d > 0 ? "-55%" : "55%",
+    rotateY:   d > 0 ? -18 : 18,
+    opacity:   0.35,
+    boxShadow: "0 0 0 rgba(0,0,0,0)",
+  }),
+};
+
+const FADE_VARIANTS = {
+  enter:  { opacity: 0 },
+  center: { opacity: 1 },
+  exit:   { opacity: 0 },
+};
+
+function PageTurnWrapper({
+  children,
+  direction,
+  pageKey,
+}: {
+  children:  React.ReactNode;
+  direction: 1 | -1;
+  pageKey:   number | string;
+}) {
+  const prefersReduced = useReducedMotion();
+  const variants  = prefersReduced ? FADE_VARIANTS : CURL_VARIANTS;
+  const duration  = prefersReduced ? 0.18 : 0.78;
+  const ease      = prefersReduced ? "easeOut" : [0.22, 1, 0.36, 1] as const;
+
+  return (
+    <div style={{ perspective: "1600px" }} className="w-full">
+      <AnimatePresence mode="wait" custom={direction}>
+        <motion.div
+          key={pageKey}
+          custom={direction}
+          variants={variants}
+          initial="enter"
+          animate="center"
+          exit="exit"
+          transition={{ duration, ease }}
+          style={{ transformStyle: "preserve-3d" }}
+        >
+          {children}
+        </motion.div>
+      </AnimatePresence>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MAIN PAGE
+// ─────────────────────────────────────────────────────────────────────────────
+
+export default function ReaderPage() {
+  const {
+    pages, storyTitle, storyTheme, factChecked,
+    coverImageUrl, coverLoading,
+    parentPhotoUrl, sketchUrl, sketchLoading,
+  } = useStoryData();
+
+  const hasCreditPage  = !!parentPhotoUrl;
+  const totalPageCount = pages.length + (hasCreditPage ? 1 : 0);
+
+  const [current,    setCurrent]    = React.useState(0);
+  const [direction,  setDirection]  = React.useState<1 | -1>(1);
+  const [bookmarked, setBookmarked] = React.useState<Set<number>>(new Set());
+  const [zoom,       setZoom]       = React.useState(1);
+  const [darkMode,   setDarkMode]   = React.useState(false);
+  const [narrating,  setNarrating]  = React.useState(false);
   const utteranceRef = React.useRef<SpeechSynthesisUtterance | null>(null);
 
-  const page = pages[current];
+  const isCreditPage = hasCreditPage && current === totalPageCount - 1;
+  const storyPage    = !isCreditPage ? pages[Math.min(current, pages.length - 1)] : null;
+  const tint         = PAGE_TINTS[current % PAGE_TINTS.length];
 
-  /** Speak the given text using the Web Speech API */
+  // ── Narration ──────────────────────────────────────────────────────────────
   function speak(text: string) {
     if (typeof window === "undefined" || !window.speechSynthesis) return;
-    // Cancel anything already playing
     window.speechSynthesis.cancel();
-
     const utter = new SpeechSynthesisUtterance(text);
-    utter.rate = 0.92;
-    utter.pitch = 1.05;
-    utter.lang = "en-US";
-    // Prefer a natural-sounding voice when available
-    const voices = window.speechSynthesis.getVoices();
-    const preferred = voices.find(
-      (v) =>
-        v.lang.startsWith("en") &&
+    utter.rate = 0.9; utter.pitch = 1.05; utter.lang = "en-US";
+    const preferred = window.speechSynthesis.getVoices().find(
+      (v) => v.lang.startsWith("en") &&
         (v.name.includes("Google") || v.name.includes("Samantha") || v.name.includes("Karen"))
     );
     if (preferred) utter.voice = preferred;
-
-    utter.onend  = () => setNarrating(false);
-    utter.onerror = () => setNarrating(false);
-
+    utter.onend = utter.onerror = () => setNarrating(false);
     utteranceRef.current = utter;
     window.speechSynthesis.speak(utter);
     setNarrating(true);
   }
-
-  /** Stop any active narration */
   function stopNarration() {
-    if (typeof window !== "undefined" && window.speechSynthesis) {
-      window.speechSynthesis.cancel();
-    }
+    if (typeof window !== "undefined") window.speechSynthesis?.cancel();
     setNarrating(false);
   }
-
-  /** Toggle narration of the current page */
   function toggleNarrate() {
-    if (narrating) {
-      stopNarration();
-    } else {
-      speak(page.text);
-    }
+    if (narrating) { stopNarration(); return; }
+    if (storyPage) speak(storyPage.text);
   }
-
-  // When the page changes, restart narration if it was active
   React.useEffect(() => {
-    if (narrating) {
-      speak(pages[current].text);
-    }
-    // Voices can load asynchronously; attach listener once
-    if (typeof window !== "undefined" && window.speechSynthesis) {
-      window.speechSynthesis.onvoiceschanged = () => {
-        // no-op: voices are fetched fresh inside speak()
-      };
-    }
-    return () => {
-      // Stop speech when component unmounts
-      if (typeof window !== "undefined" && window.speechSynthesis) {
-        window.speechSynthesis.cancel();
-      }
-    };
+    if (narrating && storyPage) speak(storyPage.text);
+    return () => { if (typeof window !== "undefined") window.speechSynthesis?.cancel(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [current]);
 
+  // ── Navigation ─────────────────────────────────────────────────────────────
   function goNext() {
-    if (current < pages.length - 1) { setDirection(1); setCurrent((c) => c + 1); }
+    if (current < totalPageCount - 1) { setDirection(1);  setCurrent((c) => c + 1); }
   }
   function goPrev() {
-    if (current > 0) { setDirection(-1); setCurrent((c) => c - 1); }
+    if (current > 0)                   { setDirection(-1); setCurrent((c) => c - 1); }
   }
   function toggleBookmark() {
-    setBookmarked((b) => {
-      const next = new Set(b);
-      if (next.has(current)) next.delete(current); else next.add(current);
-      return next;
-    });
+    setBookmarked((b) => { const n = new Set(b); n.has(current) ? n.delete(current) : n.add(current); return n; });
   }
 
-  const slideVariants = {
-    enter:  (d: number) => ({ x: d > 0 ? 300 : -300, opacity: 0, rotateY: d > 0 ? 15 : -15 }),
-    center: { x: 0, opacity: 1, rotateY: 0 },
-    exit:   (d: number) => ({ x: d > 0 ? -300 : 300, opacity: 0, rotateY: d > 0 ? -15 : 15 }),
-  };
+  // ── Build the current and adjacent page contents ───────────────────────────
 
-  // suppress unused variable warning — fullscreen toggle is a UI affordance
-  void fullscreen;
+  // On desktop we show TWO pages (even = left, odd = right).
+  // When current is even, left = current, right = current+1.
+  // When current is odd, left = current-1, right = current.
+  // On mobile we show only the current page.
+
+  function renderPageFace(idx: number, side: "left" | "right" | "single") {
+    if (idx < 0 || idx >= totalPageCount) {
+      // Empty filler page (e.g. last page when total is odd)
+      const paperBg = darkMode ? PAPER_DARK : PAPER_LIGHT;
+      const spineShadow = side === "right"
+        ? "inset 18px 0 28px -12px rgba(0,0,0,0.12)"
+        : "inset -18px 0 28px -12px rgba(0,0,0,0.10)";
+      return (
+        <div
+          className="h-full flex items-center justify-center"
+          style={{
+            background:          paperBg,
+            backgroundImage:     PAPER_GRAIN,
+            backgroundBlendMode: "multiply",
+            boxShadow:           spineShadow,
+          }}
+        >
+          <span style={{ opacity: 0.07, fontSize: 80 }} aria-hidden>📖</span>
+        </div>
+      );
+    }
+
+    const isCreditIdx = hasCreditPage && idx === totalPageCount - 1;
+    const isFirstIdx  = idx === 0;
+    const pg          = !isCreditIdx ? pages[Math.min(idx, pages.length - 1)] : null;
+    const pgTint      = PAGE_TINTS[idx % PAGE_TINTS.length];
+
+    if (isCreditIdx) {
+      return (
+        <CreditPageFace
+          parentPhotoUrl={parentPhotoUrl}
+          sketchUrl={sketchUrl}
+          sketchLoading={sketchLoading}
+          storyTitle={storyTitle}
+          darkMode={darkMode}
+          side={side}
+        />
+      );
+    }
+
+    return pg ? (
+      <BookPageFace
+        page={pg}
+        tint={pgTint}
+        isFirst={isFirstIdx}
+        coverImageUrl={coverImageUrl}
+        coverLoading={coverLoading}
+        storyTitle={storyTitle}
+        bookmarked={bookmarked.has(idx)}
+        narrating={narrating && idx === current}
+        darkMode={darkMode}
+        storyTheme={storyTheme}
+        pageKey={idx}
+        side={side}
+      />
+    ) : null;
+  }
+
+  // Desktop spread: show pair
+  const leftIdx  = current % 2 === 0 ? current     : current - 1;
+  const rightIdx = current % 2 === 0 ? current + 1 : current;
+
+  // Scroll to top of page on page change
+  React.useEffect(() => { window.scrollTo({ top: 0, behavior: "smooth" }); }, [current]);
+
+  const outerBg = darkMode
+    ? "radial-gradient(ellipse at 50% 30%, #1a2040 0%, #0a0e1a 100%)"
+    : "radial-gradient(ellipse at 50% 30%, #E8DCC8 0%, #D4C4A0 100%)";
 
   return (
-    <div className={`min-h-screen flex flex-col transition-colors duration-300 ${darkMode ? "bg-[#0a0e1a] text-white" : "gradient-page"}`}>
-      {/* Header / Toolbar */}
-      <div className={`sticky top-0 z-30 flex items-center justify-between px-4 md:px-6 h-14 border-b ${darkMode ? "bg-[#0e1220]/80 border-white/10 backdrop-blur-xl" : "glass border-border/40"}`}>
+    <div
+      className="min-h-screen flex flex-col transition-colors duration-300"
+      style={{ background: outerBg }}
+    >
+      {/* ── Toolbar ── */}
+      <div
+        className="sticky top-0 z-30 flex items-center justify-between px-4 md:px-6 h-14 border-b"
+        style={{
+          background:   darkMode ? "rgba(14,18,32,0.88)" : "rgba(250,244,232,0.88)",
+          borderColor:  darkMode ? "rgba(255,255,255,0.08)" : "rgba(160,120,60,0.22)",
+          backdropFilter: "blur(12px)",
+          WebkitBackdropFilter: "blur(12px)",
+        }}
+      >
         <div className="flex items-center gap-2">
           <Link href="/dashboard">
-            <button className={`p-2 rounded-xl transition-colors ${darkMode ? "hover:bg-white/10 text-white/70 hover:text-white" : "hover:bg-muted/60 text-muted-foreground hover:text-foreground"}`} aria-label="Back">
+            <button
+              className="p-2 rounded-xl transition-colors"
+              style={{ color: darkMode ? "rgba(255,255,255,0.65)" : "#7A5020" }}
+              aria-label="Back to dashboard"
+            >
               <ChevronLeft size={20} />
             </button>
           </Link>
           <div className="hidden sm:block">
-            <p className="font-heading font-bold text-sm leading-none">{storyTitle}</p>
-            <p className={`text-xs font-body ${darkMode ? "text-white/50" : "text-muted-foreground"}`}>Page {current + 1} of {pages.length}</p>
+            <div className="flex items-center gap-2 flex-wrap">
+              <p className="font-heading font-bold text-sm leading-none"
+                style={{ color: darkMode ? "#fff" : "#3A1800" }}>
+                {storyTitle}
+              </p>
+              {factChecked && (
+                <SproutBadge variant="mint" className="text-[10px] shrink-0">
+                  ✓ Fact-checked
+                </SproutBadge>
+              )}
+            </div>
+            <p className="text-xs font-body" style={{ color: darkMode ? "rgba(255,255,255,0.45)" : "#9A7040" }}>
+              Page {current + 1} of {totalPageCount}
+            </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-1">
-          {/* Narrate */}
-          <motion.button
-            whileTap={{ scale: 0.9 }}
-            onClick={toggleNarrate}
-            className={`p-2 rounded-xl transition-colors ${narrating ? "bg-primary text-primary-foreground" : darkMode ? "hover:bg-white/10 text-white/70 hover:text-white" : "hover:bg-muted/60 text-muted-foreground hover:text-foreground"}`}
-            aria-label="Narrate page"
-            aria-pressed={narrating}
-          >
-            <Volume2 size={18} />
+        <div className="flex items-center gap-0.5">
+          {!isCreditPage && (
+            <motion.button whileTap={{ scale: 0.9 }} onClick={toggleNarrate}
+              className="p-2 rounded-xl transition-colors"
+              style={{ color: narrating ? "#fff" : darkMode ? "rgba(255,255,255,0.6)" : "#7A5020",
+                       background: narrating ? "#6CC6FF" : "transparent" }}
+              aria-label="Narrate page" aria-pressed={narrating}>
+              <Volume2 size={17} />
+            </motion.button>
+          )}
+          <button onClick={() => setZoom((z) => Math.min(1.5, z + 0.1))}
+            className="p-2 rounded-xl transition-colors"
+            style={{ color: darkMode ? "rgba(255,255,255,0.6)" : "#7A5020" }}
+            aria-label="Zoom in"><ZoomIn size={17} /></button>
+          <button onClick={() => setZoom((z) => Math.max(0.8, z - 0.1))}
+            className="p-2 rounded-xl transition-colors"
+            style={{ color: darkMode ? "rgba(255,255,255,0.6)" : "#7A5020" }}
+            aria-label="Zoom out"><ZoomOut size={17} /></button>
+          {!isCreditPage && (
+            <motion.button whileTap={{ scale: 0.9 }} onClick={toggleBookmark}
+              className="p-2 rounded-xl transition-colors"
+              style={{ color: bookmarked.has(current) ? "#FFE066" : darkMode ? "rgba(255,255,255,0.6)" : "#7A5020" }}
+              aria-label="Bookmark page" aria-pressed={bookmarked.has(current)}>
+              <Bookmark size={17} className={bookmarked.has(current) ? "fill-[#FFE066]" : ""} />
+            </motion.button>
+          )}
+          <motion.button whileTap={{ scale: 0.9, rotate: 18 }} onClick={() => setDarkMode((d) => !d)}
+            className="p-2 rounded-xl transition-colors"
+            style={{ color: darkMode ? "rgba(255,255,255,0.6)" : "#7A5020" }}
+            aria-label="Toggle dark mode">
+            {darkMode ? <Sun size={17} /> : <Moon size={17} />}
           </motion.button>
-          {/* Zoom */}
-          <button
-            onClick={() => setZoom((z) => Math.min(1.5, z + 0.1))}
-            className={`p-2 rounded-xl transition-colors ${darkMode ? "hover:bg-white/10 text-white/70 hover:text-white" : "hover:bg-muted/60 text-muted-foreground hover:text-foreground"}`}
-            aria-label="Zoom in"
-          >
-            <ZoomIn size={18} />
-          </button>
-          <button
-            onClick={() => setZoom((z) => Math.max(0.8, z - 0.1))}
-            className={`p-2 rounded-xl transition-colors ${darkMode ? "hover:bg-white/10 text-white/70 hover:text-white" : "hover:bg-muted/60 text-muted-foreground hover:text-foreground"}`}
-            aria-label="Zoom out"
-          >
-            <ZoomOut size={18} />
-          </button>
-          {/* Bookmark */}
-          <motion.button
-            whileTap={{ scale: 0.9 }}
-            onClick={toggleBookmark}
-            className={`p-2 rounded-xl transition-colors ${bookmarked.has(current) ? "text-[#FFE66D]" : darkMode ? "hover:bg-white/10 text-white/70 hover:text-white" : "hover:bg-muted/60 text-muted-foreground hover:text-foreground"}`}
-            aria-label="Bookmark page"
-            aria-pressed={bookmarked.has(current)}
-          >
-            <Bookmark size={18} className={bookmarked.has(current) ? "fill-[#FFE66D]" : ""} />
-          </motion.button>
-          {/* Dark mode */}
-          <motion.button
-            whileTap={{ scale: 0.9, rotate: 20 }}
-            onClick={() => setDarkMode((d) => !d)}
-            className={`p-2 rounded-xl transition-colors ${darkMode ? "hover:bg-white/10 text-white/70 hover:text-white" : "hover:bg-muted/60 text-muted-foreground hover:text-foreground"}`}
-            aria-label="Toggle dark mode"
-          >
-            {darkMode ? <Sun size={18} /> : <Moon size={18} />}
-          </motion.button>
-          {/* Fullscreen */}
-          <button
-            onClick={() => setFullscreen((f) => !f)}
-            className={`p-2 rounded-xl transition-colors ${darkMode ? "hover:bg-white/10 text-white/70 hover:text-white" : "hover:bg-muted/60 text-muted-foreground hover:text-foreground"}`}
-            aria-label="Fullscreen"
-          >
-            <Maximize2 size={18} />
-          </button>
+          <button onClick={() => setZoom(1)}
+            className="p-2 rounded-xl transition-colors"
+            style={{ color: darkMode ? "rgba(255,255,255,0.6)" : "#7A5020" }}
+            aria-label="Reset zoom"><Maximize2 size={17} /></button>
         </div>
       </div>
 
-      {/* Main reader */}
-      <div className="flex-1 flex flex-col items-center justify-center p-4 md:p-8">
+      {/* ── Clickable edge zones ── */}
+      <div className="fixed inset-0 z-10 pointer-events-none">
+        <button onClick={goPrev} disabled={current === 0}
+          className="absolute left-0 top-14 bottom-0 w-[12%] opacity-0 pointer-events-auto cursor-w-resize disabled:cursor-default"
+          aria-label="Previous page" />
+        <button onClick={goNext} disabled={current === totalPageCount - 1}
+          className="absolute right-0 top-14 bottom-0 w-[12%] opacity-0 pointer-events-auto cursor-e-resize disabled:cursor-default"
+          aria-label="Next page" />
+      </div>
+
+      {/* ── Main reader area ── */}
+      <div className="relative z-20 flex-1 flex flex-col items-center justify-start px-4 py-6 md:px-8 md:py-10">
         <motion.div
           style={{ scale: zoom }}
           transition={{ type: "spring", stiffness: 300, damping: 30 }}
-          className="w-full max-w-2xl"
+          className="w-full max-w-5xl origin-top"
         >
-          {/* Book */}
-          <div className={`rounded-3xl overflow-hidden shadow-2xl ${darkMode ? "shadow-black/50" : "shadow-black/15"}`}>
-            <AnimatePresence mode="wait" custom={direction}>
-              <motion.div
-                key={current}
-                custom={direction}
-                variants={slideVariants}
-                initial="enter"
-                animate="center"
-                exit="exit"
-                transition={{ type: "spring", stiffness: 300, damping: 30, duration: 0.4 }}
-              >
-                {/* Illustration */}
-                <div
-                  className="relative h-64 md:h-80 flex items-center justify-center"
-                  style={{ background: page.gradient }}
-                >
-                  <motion.span
-                    key={`ill-${current}`}
-                    initial={{ scale: 0.5, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    transition={{ type: "spring", stiffness: 200, damping: 20, delay: 0.1 }}
-                    className="text-9xl md:text-[10rem] drop-shadow-xl"
-                    style={{ filter: "drop-shadow(0 8px 24px rgba(0,0,0,0.2))" }}
-                  >
-                    {page.illustration}
-                  </motion.span>
+          <PageTurnWrapper direction={direction} pageKey={current}>
+            {/* ── Desktop: open book ── */}
+            <OpenBook
+              darkMode={darkMode}
+              leftContent={renderPageFace(leftIdx, "left")}
+              rightContent={renderPageFace(rightIdx, "right")}
+            />
 
-                  {/* Page number badge */}
-                  <div className="absolute top-4 right-4">
-                    <SproutBadge variant="solid" className="text-xs shadow-lg">
-                      {current + 1} / {pages.length}
-                    </SproutBadge>
-                  </div>
-
-                  {bookmarked.has(current) && (
-                    <motion.div
-                      initial={{ y: -20 }}
-                      animate={{ y: 0 }}
-                      className="absolute top-0 left-6"
-                    >
-                      <Bookmark size={24} className="fill-[#FFE66D] stroke-[#b8860b]" />
-                    </motion.div>
-                  )}
-
-                  {/* Narrating indicator */}
-                  {narrating && (
-                    <div className="absolute bottom-4 left-0 right-0 flex justify-center">
-                      <motion.div
-                        className="flex items-center gap-2 bg-black/30 text-white text-xs px-3 py-1.5 rounded-full backdrop-blur-sm font-body"
-                        animate={{ opacity: [0.7, 1, 0.7] }}
-                        transition={{ duration: 2, repeat: Infinity }}
-                      >
-                        <Volume2 size={12} />
-                        <span>Narrating…</span>
-                        {[0,1,2].map((d) => (
-                          <motion.div key={d} className="w-1 h-1 rounded-full bg-white"
-                            animate={{ scale: [1,2,1] }}
-                            transition={{ duration: 0.6, repeat: Infinity, delay: d * 0.15 }} />
-                        ))}
-                      </motion.div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Text area */}
-                <div className={`px-6 md:px-10 py-8 ${darkMode ? "bg-[#0e1220]" : "bg-background/95"}`}>
-                  <motion.h2
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.15 }}
-                    className="font-heading font-bold text-xl md:text-2xl mb-3"
-                  >
-                    {page.title}
-                  </motion.h2>
-                  <motion.p
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.2 }}
-                    className={`font-body leading-relaxed text-base md:text-lg ${darkMode ? "text-white/80" : "text-foreground/80"}`}
-                  >
-                    {page.text}
-                  </motion.p>
-                </div>
-              </motion.div>
-            </AnimatePresence>
-          </div>
+            {/* ── Mobile: single page ── */}
+            <div
+              className="md:hidden rounded-2xl overflow-hidden"
+              style={{
+                boxShadow: darkMode
+                  ? "0 24px 48px rgba(0,0,0,0.65)"
+                  : "0 20px 44px rgba(100,60,0,0.22)",
+                border: darkMode ? "1px solid rgba(255,255,255,0.06)" : "1px solid rgba(160,100,0,0.18)",
+                minHeight: "75vh",
+              }}
+            >
+              {renderPageFace(current, "single")}
+            </div>
+          </PageTurnWrapper>
         </motion.div>
 
-        {/* Navigation */}
-        <div className="flex items-center gap-4 mt-6">
+        {/* ── Navigation ── */}
+        <div className="flex items-center gap-3 mt-6 z-20">
           <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.9 }}
-            onClick={goPrev}
-            disabled={current === 0}
-            className={`flex items-center gap-2 px-5 py-3 rounded-2xl font-heading font-semibold text-sm transition-all ${
-              current === 0
-                ? "opacity-30 cursor-not-allowed bg-muted text-muted-foreground"
-                : darkMode
-                  ? "bg-white/10 text-white hover:bg-white/20 border border-white/10"
-                  : "glass text-foreground hover:bg-white/80"
-            }`}
+            whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.92 }}
+            onClick={goPrev} disabled={current === 0}
+            className="flex items-center gap-1.5 px-5 py-2.5 rounded-2xl font-heading font-semibold text-sm transition-all"
+            style={{
+              opacity:    current === 0 ? 0.3 : 1,
+              background: darkMode ? "rgba(255,255,255,0.10)" : "rgba(255,248,238,0.85)",
+              color:      darkMode ? "#fff" : "#5A3010",
+              border:     darkMode ? "1px solid rgba(255,255,255,0.12)" : "1px solid rgba(160,100,40,0.28)",
+              boxShadow:  "0 2px 8px rgba(0,0,0,0.10)",
+            }}
           >
-            <ChevronLeft size={18} /> Previous
+            <ChevronLeft size={16} /> Previous
           </motion.button>
 
           {/* Page dots */}
-          <div className="flex gap-1.5">
-            {pages.map((_, i) => (
+          <div className="flex gap-1.5 flex-wrap justify-center max-w-[200px]">
+            {Array.from({ length: totalPageCount }).map((_, i) => (
               <motion.button
                 key={i}
-                whileHover={{ scale: 1.3 }}
+                whileHover={{ scale: 1.35 }}
                 onClick={() => { setDirection(i > current ? 1 : -1); setCurrent(i); }}
-                className={`rounded-full transition-all ${
-                  i === current
-                    ? "w-6 h-3 bg-primary"
+                className="rounded-full transition-all"
+                style={{
+                  width:      i === current ? 22 : 10,
+                  height:     10,
+                  background: i === current
+                    ? "#C87533"
                     : bookmarked.has(i)
-                      ? "w-3 h-3 bg-[#FFE66D]"
-                      : darkMode
-                        ? "w-3 h-3 bg-white/20 hover:bg-white/40"
-                        : "w-3 h-3 bg-border hover:bg-primary/50"
-                }`}
+                    ? "#FFE066"
+                    : darkMode ? "rgba(255,255,255,0.20)" : "rgba(160,100,40,0.28)",
+                }}
                 aria-label={`Go to page ${i + 1}`}
               />
             ))}
           </div>
 
           <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.9 }}
-            onClick={goNext}
-            disabled={current === pages.length - 1}
-            className={`flex items-center gap-2 px-5 py-3 rounded-2xl font-heading font-semibold text-sm transition-all ${
-              current === pages.length - 1
-                ? "opacity-30 cursor-not-allowed bg-muted text-muted-foreground"
-                : "bg-gradient-to-r from-[#6CC6FF] to-[#BFA7FF] text-white shadow-md hover:brightness-105"
-            }`}
+            whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.92 }}
+            onClick={goNext} disabled={current === totalPageCount - 1}
+            className="flex items-center gap-1.5 px-5 py-2.5 rounded-2xl font-heading font-semibold text-sm transition-all"
+            style={{
+              opacity:    current === totalPageCount - 1 ? 0.3 : 1,
+              background: "linear-gradient(135deg, #C87533, #E8A44A)",
+              color:      "#fff",
+              boxShadow:  current === totalPageCount - 1 ? "none" : "0 4px 14px rgba(200,117,51,0.38)",
+            }}
           >
-            Next <ChevronRight size={18} />
+            Next <ChevronRight size={16} />
           </motion.button>
         </div>
 
-        {/* End of story actions */}
-        {current === pages.length - 1 && (
+        {/* ── End-of-story actions ── */}
+        {(current === pages.length - 1 || isCreditPage) && (
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="flex flex-wrap justify-center gap-3 mt-4"
+            transition={{ delay: 0.4 }}
+            className="flex flex-wrap justify-center gap-3 mt-5 z-20"
           >
             <Link href="/quiz/1">
-              <SproutButton variant="primary" size="md" leftIcon={<span>🧩</span>}>Take Quiz</SproutButton>
+              <SproutButton variant="primary"   size="md" leftIcon={<span>🧩</span>}>Take Quiz</SproutButton>
             </Link>
             <Link href="/vocabulary/1">
               <SproutButton variant="secondary" size="md" leftIcon={<span>🔤</span>}>Vocabulary</SproutButton>
             </Link>
             <Link href="/downloads">
-              <SproutButton variant="mint" size="md" leftIcon={<Download size={16} />}>Download</SproutButton>
+              <SproutButton variant="mint"      size="md" leftIcon={<Download size={15} />}>Download</SproutButton>
             </Link>
           </motion.div>
         )}

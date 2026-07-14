@@ -61,11 +61,17 @@ export interface StoryPayload {
   storyType: string;
   /** Base-64 data URL of the sketch preview, or null. */
   photoSketch: string | null;
-  length: "short" | "medium" | "lengthy";
+  length: "short" | "medium";
   artStyle: "sketch" | "color";
   ageLevel: "3-5" | "6-8" | "9-12";
+  /**
+   * Optional JSON string carrying domain-specific answers
+   * (memory text, culture name, era, POV, etc.) for domain-mode stories.
+   * Parsed by the backend to enrich the Granite prompt.
+   */
+  domainMeta?: string;
   /** Story language, e.g. "English", "Tamil", "Hindi", "Spanish", "Mandarin Chinese". Defaults to "English". */
-  language: string;
+  language?: string;
 }
 
 /** A single page returned by the story generation API. */
@@ -73,6 +79,10 @@ export interface StoryPage {
   pageNumber: number;
   text: string;
   imagePrompt: string;
+  /** URL of the generated illustration, set after /generate-images completes. */
+  imageUrl?: string;
+  /** Visual keywords extracted by Granite for this page. */
+  keywords?: string[];
 }
 
 /** A single quiz question returned by the story generation API. */
@@ -94,7 +104,37 @@ export interface StoryResponse {
   pages: StoryPage[];
   quiz: QuizQuestion[];
   vocabulary: VocabularyItem[];
+  /** True for Cultural & Historical domain stories that passed fact-check. */
+  _fact_checked?: boolean;
+  /**
+   * Enriched client-side — set by use-wizard before sessionStorage write.
+   * Plain-English character description kept identical on every page
+   * so Pollinations renders a consistent character across illustrations.
+   */
+  heroDescription?: string;
+  /**
+   * Enriched client-side — the wizard's artStyle choice ("color" | "sketch").
+   * Passed through to POST /generate-images so the right style suffix is used.
+   */
+  artStyle?: "color" | "sketch";
+  /**
+   * Enriched client-side — the story theme chosen in the wizard
+   * (e.g. "ocean", "forest", "space", "sky").
+   * Used by the reader to pick the ambient particle animation.
+   */
+  theme?: string;
+  /**
+   * Set after /generate-cover-image completes.
+   * A single cover illustration URL representing the whole story.
+   */
+  coverImageUrl?: string;
 }
 
 /** sessionStorage key used to pass the generated story between pages. */
 export const STORY_SESSION_KEY = "sprout_current_story";
+
+/**
+ * sessionStorage key used to pass the parent's uploaded photo (data URL)
+ * to the reader's credit page. Tab-local only — never persisted to any DB.
+ */
+export const PHOTO_SESSION_KEY = "sprout_creator_photo";

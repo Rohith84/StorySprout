@@ -4,7 +4,7 @@ import * as React from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Menu, Bell, Sun, Moon, Search, Sparkles } from "lucide-react";
-import { useTheme } from "next-themes";
+import { useTheme } from "@/providers/theme-provider";
 import { cn } from "@/lib/utils";
 import { SearchInput } from "@/components/ui/sprout-inputs";
 import { MobileDrawer } from "@/components/navigation/sidebar";
@@ -19,7 +19,7 @@ interface HeaderProps {
 }
 
 function Header({ navItems, showSearch = true, title, className }: HeaderProps) {
-  const { theme, setTheme } = useTheme();
+  const { resolvedTheme, setTheme } = useTheme();
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const [searchOpen, setSearchOpen] = React.useState(false);
   const [mounted, setMounted] = React.useState(false);
@@ -98,11 +98,11 @@ function Header({ navItems, showSearch = true, title, className }: HeaderProps) 
             {mounted && (
               <motion.button
                 whileTap={{ scale: 0.85, rotate: 20 }}
-                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
                 className="p-2 rounded-xl hover:bg-muted/60 text-muted-foreground hover:text-foreground transition-colors"
-                aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+                aria-label={`Switch to ${resolvedTheme === "dark" ? "light" : "dark"} mode`}
               >
-                {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
+                {resolvedTheme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
               </motion.button>
             )}
 
