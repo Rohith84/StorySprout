@@ -1,15 +1,5 @@
 "use client";
 
-/**
- * StoryPdfDocument
- *
- * Renders the StorySprout storybook PDF using @react-pdf/renderer v4.
- * Layout: Cover page → Story pages (one per page) → Vocabulary page → Quiz page.
- *
- * Gradients are rendered via SVG LinearGradient inside an Svg block so that the
- * full brand palette is preserved in the PDF output.
- */
-
 import * as React from "react";
 import {
   Document,
@@ -22,13 +12,11 @@ import {
   LinearGradient,
   Stop,
   Rect,
+  Image,
   StyleSheet,
 } from "@react-pdf/renderer";
 
-// ---------------------------------------------------------------------------
-// Emoji source — Apple Color Emoji PNGs via jsDelivr (same "3D" glyphs as
-// the browser). Must run once at module load time before any pdf() call.
-// ---------------------------------------------------------------------------
+// emoji
 Font.registerEmojiSource({
   builder: (code: string) =>
     `https://cdn.jsdelivr.net/npm/emoji-datasource-apple@15.1.2/img/apple/64/${code}.png`,
@@ -75,13 +63,27 @@ export interface PdfStoryData {
   pages: PdfStoryPage[];
   vocabulary: PdfVocabItem[];
   quiz: PdfQuizQuestion[];
-  /** Story creation inputs — present when sessionStorage payload is available. */
   storyMeta?: PdfStoryMeta;
+  coverImageUrl?: string;
+  parentPhotoUrl?: string;
+  creatorName?: string;
+  storyTheme?: string;
 }
 
 // ---------------------------------------------------------------------------
-// Brand colours
+// Constants
 // ---------------------------------------------------------------------------
+
+// 5 page tints matching the reader's PAGE_TINTS
+const PAGE_TINTS = [
+  { accent: "#C87533", text: "#3A1800", hex: "#C87533" },
+  { accent: "#2E7CBF", text: "#012244", hex: "#2E7CBF" },
+  { accent: "#6A3EB8", text: "#220050", hex: "#6A3EB8" },
+  { accent: "#2A7A40", text: "#0A3A1A", hex: "#2A7A40" },
+  { accent: "#B5254F", text: "#420022", hex: "#B5254F" },
+];
+
+const PAPER_LIGHT = "#FBF7EE";
 
 const BRAND = {
   skyBlue:  "#6CC6FF",
@@ -95,33 +97,49 @@ const BRAND = {
   accent:   "#3b82d4",
 };
 
-// Gradient stop pairs for the 5 page-gradient slots (matching the reader GRADIENTS array)
-const GRADIENT_STOPS: Array<[string, string]> = [
-  ["#B9FBC0", "#6CC6FF"],  // 0 forest
-  ["#FFD8A8", "#FFE66D"],  // 1 peach/sunny
-  ["#6CC6FF", "#BFA7FF"],  // 2 sky/lavender
-  ["#BFA7FF", "#FFD8A8"],  // 3 lavender/peach
-  ["#B9FBC0", "#BFA7FF"],  // 4 mint/lavender
-];
-
-// Cover gradient — same as "magic"
 const COVER_STOPS: [string, string] = ["#6CC6FF", "#BFA7FF"];
+
+// Theme icon pools (simplified from the reader)
+const THEME_ICONS: Record<string, string[]> = {
+  adventure:  ["🗺️","🧭","🏔️","🌋","⛺","🎒"],
+  space:      ["🚀","⭐","🪐","🌙","☄️","🛸"],
+  sea:        ["🌊","🐠","🐬","🐚","🦀","🐙"],
+  magic:      ["✨","🧚","🦄","🐉","👑","🪄"],
+  animals:    ["🦁","🐒","🦋","🌿","🐘","🦜"],
+  dinos:      ["🦕","🦖","🌋","🦴","🥚","🌿"],
+  bedtime:    ["🌙","⭐","☁️","🧸","🕯️","😴"],
+  everyday:   ["🏡","🌳","🚲","🎒","🎂","🌸"],
+  default:    ["✨","🌟","🌈","🍀","💫","🌸"],
+};
+
+// Emoji positions (% of page width/height) — margins only, never over content
+const FLOAT_POSITIONS = [
+  { left: 3,  top: 12 },
+  { left: 1,  top: 35 },
+  { left: 4,  top: 65 },
+  { left: 1,  top: 82 },
+  { left: 94, top: 16 },
+  { left: 96, top: 45 },
+  { left: 93, top: 70 },
+  { left: 95, top: 88 },
+];
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
-/** Extract the start and end hex colours from a CSS linear-gradient string.
- *  Falls back to sky/lavender if parsing fails. */
-function parseGradientStops(gradient: string): [string, string] {
-  const hex = gradient.match(/#[0-9a-fA-F]{6}/g);
-  if (hex && hex.length >= 2) return [hex[0], hex[hex.length - 1]];
-  return COVER_STOPS;
-}
-
-/** Convert a page index to a stable SVG gradient id */
-function gradId(prefix: string, idx: number) {
-  return `${prefix}${idx}`;
+function resolveIconKey(theme: string | undefined): string {
+  if (!theme) return "default";
+  const t = theme.toLowerCase();
+  if (/adventure|journey|quest|explore/.test(t))    return "adventure";
+  if (/space|star|galaxy|moon|cosmic|planet/.test(t)) return "space";
+  if (/sea|ocean|water|marine|fish|under/.test(t))  return "sea";
+  if (/magic|fairy|wizard|dragon|unicorn/.test(t))  return "magic";
+  if (/animal|jungle|forest|nature|wild/.test(t))   return "animals";
+  if (/dino|dinosaur/.test(t))                      return "dinos";
+  if (/bedtime|sleep|night|calm|dream/.test(t))     return "bedtime";
+  if (/everyday|home|school|life/.test(t))          return "everyday";
+  return "default";
 }
 
 // ---------------------------------------------------------------------------
@@ -129,21 +147,13 @@ function gradId(prefix: string, idx: number) {
 // ---------------------------------------------------------------------------
 
 const S = StyleSheet.create({
-  // Page
   pageA4: {
     width: "100%",
     height: "100%",
-    backgroundColor: BRAND.white,
+    backgroundColor: PAPER_LIGHT,
   },
 
   // Cover
-  coverFill: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
   coverContent: {
     flex: 1,
     alignItems: "center",
@@ -157,6 +167,8 @@ const S = StyleSheet.create({
   },
   coverTitle: {
     fontSize: 36,
+    fontFamily: "Helvetica",
+    fontWeight: 800,
     color: BRAND.darkText,
     textAlign: "center",
     marginBottom: 12,
@@ -164,6 +176,7 @@ const S = StyleSheet.create({
   },
   coverSubtitle: {
     fontSize: 14,
+    fontFamily: "Helvetica",
     color: BRAND.mutedText,
     textAlign: "center",
     letterSpacing: 1,
@@ -175,61 +188,104 @@ const S = StyleSheet.create({
     right: 0,
     textAlign: "center",
     fontSize: 11,
+    fontFamily: "Helvetica",
     color: BRAND.mutedText,
   },
 
-  // Story page — illustration area (top half)
-  illArea: {
-    height: "50%",
-    position: "relative",
+  // Story page — header
+  pageHeader: {
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 24,
+    paddingTop: 18,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
   },
-  illEmoji: {
-    fontSize: 80,
-    textAlign: "center",
+  pageHeaderLeft: {
+    flexDirection: "column",
+    gap: 1,
   },
-  pageNumBadge: {
-    position: "absolute",
-    top: 12,
-    right: 14,
-    backgroundColor: "rgba(0,0,0,0.25)",
-    borderRadius: 20,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+  pageHeaderStoryLabel: {
+    fontSize: 8,
+    fontFamily: "Helvetica",
+    fontWeight: 700,
+    textTransform: "uppercase",
+    letterSpacing: 1.8,
   },
-  pageNumText: {
-    fontSize: 10,
-    color: BRAND.white,
+  pageHeaderTitle: {
+    fontSize: 14,
+    fontFamily: "Helvetica",
+    fontWeight: 700,
+  },
+  pageHeaderBadge: {
+    fontSize: 9,
+    fontFamily: "Helvetica",
+    fontWeight: 400,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 12,
+    backgroundColor: "rgba(0,0,0,0.06)",
+  },
+  headerNavIcons: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
   },
 
-  // Story page — text area (bottom half)
+  // Cover image
+  coverImage: {
+    width: "100%",
+    borderRadius: 12,
+  },
+
+  // Image wrapper (full width, aspect ratio auto)
+  imageWrapper: {
+    paddingHorizontal: 24,
+    paddingTop: 14,
+  },
+
+  // Text area
   textArea: {
     flex: 1,
-    paddingHorizontal: 36,
-    paddingVertical: 28,
-    backgroundColor: BRAND.white,
+    paddingHorizontal: 28,
+    paddingTop: 16,
+    paddingBottom: 6,
   },
   storyText: {
-    fontSize: 13,
+    fontSize: 10,
+    fontFamily: "Helvetica",
+    fontWeight: 400,
     color: BRAND.darkText,
-    lineHeight: 1.7,
+    lineHeight: 1.9,
   },
 
-  // Vocab / Quiz pages
+  // Bottom page number
+  pageNumberBar: {
+    textAlign: "center",
+    paddingBottom: 14,
+    paddingTop: 4,
+  },
+  pageNumberText: {
+    fontSize: 10,
+    fontFamily: "Helvetica",
+  },
+
+  // Vocab / Quiz / Details pages
   sectionPage: {
     padding: 48,
-    backgroundColor: BRAND.white,
+    backgroundColor: PAPER_LIGHT,
   },
   sectionHeading: {
     fontSize: 26,
+    fontFamily: "Helvetica",
+    fontWeight: 700,
     color: BRAND.darkText,
     marginBottom: 28,
     borderBottom: `2 solid ${BRAND.skyBlue}`,
     paddingBottom: 10,
   },
 
-  // Vocab items
   vocabItem: {
     marginBottom: 16,
     paddingLeft: 14,
@@ -237,33 +293,39 @@ const S = StyleSheet.create({
   },
   vocabWord: {
     fontSize: 14,
+    fontFamily: "Helvetica",
+    fontWeight: 600,
     color: BRAND.darkText,
     marginBottom: 2,
   },
   vocabMeaning: {
     fontSize: 12,
+    fontFamily: "Helvetica",
     color: BRAND.mutedText,
     lineHeight: 1.5,
   },
 
-  // Quiz items
   quizItem: {
     marginBottom: 22,
   },
   quizQuestion: {
     fontSize: 13,
+    fontFamily: "Helvetica",
+    fontWeight: 600,
     color: BRAND.darkText,
     marginBottom: 8,
     lineHeight: 1.4,
   },
   quizOption: {
     fontSize: 12,
+    fontFamily: "Helvetica",
     color: BRAND.darkText,
     marginBottom: 4,
     paddingLeft: 10,
   },
   quizOptionCorrect: {
     fontSize: 12,
+    fontFamily: "Helvetica",
     color: "#166534",
     marginBottom: 4,
     paddingLeft: 10,
@@ -272,7 +334,6 @@ const S = StyleSheet.create({
     borderRadius: 4,
   },
 
-  // Story Details page
   detailsHeaderArea: {
     height: 120,
     position: "relative",
@@ -286,6 +347,8 @@ const S = StyleSheet.create({
   },
   detailsHeaderTitle: {
     fontSize: 22,
+    fontFamily: "Helvetica",
+    fontWeight: 700,
     color: BRAND.darkText,
     textAlign: "center",
   },
@@ -294,7 +357,7 @@ const S = StyleSheet.create({
     paddingHorizontal: 48,
     paddingTop: 32,
     paddingBottom: 48,
-    backgroundColor: BRAND.white,
+    backgroundColor: PAPER_LIGHT,
   },
   detailsRow: {
     flexDirection: "row",
@@ -305,6 +368,7 @@ const S = StyleSheet.create({
   detailsLabel: {
     width: 140,
     fontSize: 11,
+    fontFamily: "Helvetica",
     color: BRAND.mutedText,
     paddingRight: 12,
     lineHeight: 1.5,
@@ -312,6 +376,7 @@ const S = StyleSheet.create({
   detailsValue: {
     flex: 1,
     fontSize: 12,
+    fontFamily: "Helvetica",
     color: BRAND.darkText,
     lineHeight: 1.5,
   },
@@ -325,18 +390,97 @@ const S = StyleSheet.create({
   detailsCreatedLabel: {
     width: 140,
     fontSize: 11,
+    fontFamily: "Helvetica",
     color: BRAND.mutedText,
     paddingRight: 12,
   },
   detailsCreatedValue: {
     flex: 1,
     fontSize: 12,
+    fontFamily: "Helvetica",
     color: BRAND.darkText,
+  },
+
+  // Credit page
+  creditPage: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 32,
+    paddingVertical: 48,
+    backgroundColor: "#FFF6ED",
+  },
+  creditPhotoWrapper: {
+    width: 80,
+    height: 80,
+    borderRadius: "50%",
+    overflow: "hidden",
+    marginBottom: 16,
+    borderWidth: 2,
+    borderColor: "#C4956A55",
+  },
+  creditPhoto: {
+    width: "100%",
+    height: "100%",
+  },
+  creditAuthorText: {
+    fontFamily: "Helvetica",
+    fontSize: 10,
+    color: "#8C5A30",
+    textAlign: "center",
+    marginBottom: 20,
+  },
+  creditTheEnd: {
+    fontFamily: "Helvetica",
+    fontWeight: 800,
+    fontSize: 22,
+    color: "#7A3800",
+    textAlign: "center",
+    marginBottom: 12,
+  },
+  creditStoryTitle: {
+    fontFamily: "Helvetica",
+    fontWeight: 600,
+    fontSize: 12,
+    color: "#5A2E05",
+    textAlign: "center",
+    marginBottom: 4,
+  },
+  creditTagline: {
+    fontFamily: "Helvetica",
+    fontSize: 10,
+    color: "#8C5A30",
+    textAlign: "center",
+    lineHeight: 1.6,
+    maxWidth: 200,
+  },
+  creditSprout: {
+    fontFamily: "Helvetica",
+    fontSize: 9,
+    color: "#A07050",
+    textAlign: "center",
+    marginTop: 4,
+  },
+  creditDivider: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    marginTop: 16,
+    width: "60%",
+  },
+  creditDividerLine: {
+    flex: 1,
+    borderBottomWidth: 1,
+    borderBottomColor: "#C4956A",
+  },
+  creditDividerIcon: {
+    fontSize: 11,
+    color: "#C4956A",
   },
 });
 
 // ---------------------------------------------------------------------------
-// GradientRect — renders a full-area gradient via SVG inside a View
+// GradientRect — full-area gradient via SVG
 // ---------------------------------------------------------------------------
 
 interface GradientRectProps {
@@ -346,16 +490,45 @@ interface GradientRectProps {
 
 function GradientRect({ id, stops }: GradientRectProps) {
   return (
-    <Svg style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, width: "100%", height: "100%" }}
-      viewBox="0 0 595 420">
+    <Svg style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
+      viewBox="0 0 595 842">
       <Defs>
         <LinearGradient id={id} x1="0" y1="0" x2="1" y2="1">
           <Stop offset="0" stopColor={stops[0]} stopOpacity={1} />
           <Stop offset="1" stopColor={stops[1]} stopOpacity={1} />
         </LinearGradient>
       </Defs>
-      <Rect x="0" y="0" width="595" height="420" fill={`url(#${id})`} />
+      <Rect x="0" y="0" width="595" height="842" fill={`url(#${id})`} />
     </Svg>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// FloatingEmoji — static decorative emoji in page margins
+// ---------------------------------------------------------------------------
+
+function FloatingEmoji({ theme }: { theme: string | undefined }) {
+  const key = resolveIconKey(theme);
+  const pool = THEME_ICONS[key] ?? THEME_ICONS.default;
+
+  return (
+    <>
+      {FLOAT_POSITIONS.map((pos, i) => (
+        <Text
+          key={i}
+          style={{
+            position: "absolute",
+            left: `${pos.left}%`,
+            top: `${pos.top}%`,
+            fontSize: 14,
+            opacity: 0.18,
+          }}
+          aria-hidden
+        >
+          {pool[i % pool.length]}
+        </Text>
+      ))}
+    </>
   );
 }
 
@@ -366,60 +539,66 @@ function GradientRect({ id, stops }: GradientRectProps) {
 function CoverPage({ title }: { title: string }) {
   return (
     <Page size="A4" style={S.pageA4}>
-      {/* Gradient background */}
-      <Svg style={S.coverFill} viewBox="0 0 595 842">
-        <Defs>
-          <LinearGradient id="cover-grad" x1="0" y1="0" x2="1" y2="1">
-            <Stop offset="0" stopColor={COVER_STOPS[0]} stopOpacity={1} />
-            <Stop offset="1" stopColor={COVER_STOPS[1]} stopOpacity={1} />
-          </LinearGradient>
-        </Defs>
-        <Rect x="0" y="0" width="595" height="842" fill="url(#cover-grad)" />
-      </Svg>
-
-      {/* Content */}
+      <GradientRect id="cover-grad" stops={COVER_STOPS} />
       <View style={S.coverContent}>
         <Text style={S.coverEmoji}>📖</Text>
         <Text style={S.coverTitle}>{title}</Text>
         <Text style={S.coverSubtitle}>A StorySprout Story</Text>
       </View>
-
       <Text style={S.coverStorySprout}>Created with StorySprout ✨</Text>
     </Page>
   );
 }
 
 // ---------------------------------------------------------------------------
-// StoryPageComponent
+// StoryPageComponent — single continuous story page.
+// Header + full‑width image on page 1, all story text flows into a single
+// <Text> that @react-pdf/renderer automatically wraps to new pages.
 // ---------------------------------------------------------------------------
 
 function StoryPageComponent({
-  page,
-  total,
-  index,
+  text,
+  title,
+  coverImageUrl,
+  storyTheme,
 }: {
-  page: PdfStoryPage;
-  total: number;
-  index: number;
+  text: string;
+  title: string;
+  coverImageUrl?: string;
+  storyTheme?: string;
 }) {
-  const stops = parseGradientStops(page.gradient) ?? GRADIENT_STOPS[index % GRADIENT_STOPS.length];
-  const gid = gradId("story-grad-", index);
+  const tint = PAGE_TINTS[0];
 
   return (
     <Page size="A4" style={S.pageA4}>
-      {/* Illustration area */}
-      <View style={S.illArea}>
-        <GradientRect id={gid} stops={stops} />
-        <Text style={S.illEmoji}>{page.illustration}</Text>
-        {/* Page badge */}
-        <View style={S.pageNumBadge}>
-          <Text style={S.pageNumText}>{page.pageNum} / {total}</Text>
+      <FloatingEmoji theme={storyTheme} />
+
+      {/* Page header */}
+      <View style={[S.pageHeader, { borderBottomColor: tint.accent + "28" }]}>
+        <View style={S.pageHeaderLeft}>
+          <Text style={[S.pageHeaderStoryLabel, { color: tint.accent + "bb" }]}>
+            ✦ Story
+          </Text>
+          <Text style={[S.pageHeaderTitle, { color: tint.text }]}>
+            {title}
+          </Text>
+        </View>
+        <View style={S.headerNavIcons}>
+          <Text style={S.pageHeaderBadge}>p.1</Text>
         </View>
       </View>
 
-      {/* Text area */}
+      {/* Full‑width image */}
+      {coverImageUrl && (
+        <View style={S.imageWrapper}>
+          {/* eslint-disable-next-line jsx-a11y/alt-text -- @react-pdf/renderer Image doesn't support alt */}
+          <Image src={coverImageUrl} style={S.coverImage} cache />
+        </View>
+      )}
+
+      {/* Story text — flex:1 so it fills the remaining space; auto-overflows */}
       <View style={S.textArea}>
-        <Text style={S.storyText}>{page.text}</Text>
+        <Text style={S.storyText}>{text}</Text>
       </View>
     </Page>
   );
@@ -431,14 +610,16 @@ function StoryPageComponent({
 
 function VocabPage({ vocabulary }: { vocabulary: PdfVocabItem[] }) {
   return (
-    <Page size="A4" style={[S.pageA4, S.sectionPage]}>
-      <Text style={S.sectionHeading}>Word Bank</Text>
-      {vocabulary.map((item, i) => (
-        <View key={i} style={S.vocabItem}>
-          <Text style={S.vocabWord}>{item.word}</Text>
-          <Text style={S.vocabMeaning}>{item.meaning}</Text>
-        </View>
-      ))}
+    <Page size="A4" style={S.pageA4}>
+      <View style={S.sectionPage}>
+        <Text style={S.sectionHeading}>Word Bank</Text>
+        {vocabulary.map((item, i) => (
+          <View key={i} style={S.vocabItem}>
+            <Text style={S.vocabWord}>{item.word}</Text>
+            <Text style={S.vocabMeaning}>{item.meaning}</Text>
+          </View>
+        ))}
+      </View>
     </Page>
   );
 }
@@ -451,23 +632,25 @@ const OPTION_LABELS = ["A", "B", "C", "D"];
 
 function QuizPage({ quiz }: { quiz: PdfQuizQuestion[] }) {
   return (
-    <Page size="A4" style={[S.pageA4, S.sectionPage]}>
-      <Text style={S.sectionHeading}>Story Quiz</Text>
-      {quiz.map((q, qi) => (
-        <View key={qi} style={S.quizItem}>
-          <Text style={S.quizQuestion}>
-            {qi + 1}. {q.question}
-          </Text>
-          {q.options.map((opt, oi) => {
-            const isCorrect = opt === q.answer;
-            return (
-              <Text key={oi} style={isCorrect ? S.quizOptionCorrect : S.quizOption}>
-                {OPTION_LABELS[oi] ?? oi + 1}. {opt}{isCorrect ? "  ✓" : ""}
-              </Text>
-            );
-          })}
-        </View>
-      ))}
+    <Page size="A4" style={S.pageA4}>
+      <View style={S.sectionPage}>
+        <Text style={S.sectionHeading}>Story Quiz</Text>
+        {quiz.map((q, qi) => (
+          <View key={qi} style={S.quizItem}>
+            <Text style={S.quizQuestion}>
+              {qi + 1}. {q.question}
+            </Text>
+            {q.options.map((opt, oi) => {
+              const isCorrect = opt === q.answer;
+              return (
+                <Text key={oi} style={isCorrect ? S.quizOptionCorrect : S.quizOption}>
+                  {OPTION_LABELS[oi] ?? oi + 1}. {opt}{isCorrect ? "  ✓" : ""}
+                </Text>
+              );
+            })}
+          </View>
+        ))}
+      </View>
     </Page>
   );
 }
@@ -500,7 +683,6 @@ function StoryDetailsPage({ meta }: { meta: PdfStoryMeta }) {
         <Text style={S.detailsHeaderTitle}>Story Details</Text>
       </View>
 
-      {/* Metadata rows */}
       <View style={S.detailsBody}>
         {meta.heroName  && <MetaRow label="Hero Name"    value={meta.heroName} />}
         {meta.heroType  && <MetaRow label="Hero Type"    value={meta.heroType} />}
@@ -513,7 +695,6 @@ function StoryDetailsPage({ meta }: { meta: PdfStoryMeta }) {
         <MetaRow label="Art Style"   value={meta.artStyle} />
         <MetaRow label="Story Length" value={meta.length} />
 
-        {/* Created On — separated by a heavier rule */}
         <View style={S.detailsCreatedRow}>
           <Text style={S.detailsCreatedLabel}>Created On</Text>
           <Text style={S.detailsCreatedValue}>{meta.createdAt}</Text>
@@ -532,13 +713,21 @@ interface StoryPdfDocumentProps {
 }
 
 export function StoryPdfDocument({ data }: StoryPdfDocumentProps) {
+  const storyText = React.useMemo(
+    () => data.pages.map((p) => p.text).join("\n\n"),
+    [data.pages]
+  );
+
   return (
     <Document title={data.title} author="StorySprout" producer="StorySprout">
       <CoverPage title={data.title} />
       {data.storyMeta && <StoryDetailsPage meta={data.storyMeta} />}
-      {data.pages.map((page, i) => (
-        <StoryPageComponent key={i} page={page} total={data.pages.length} index={i} />
-      ))}
+      <StoryPageComponent
+        text={storyText}
+        title={data.title}
+        coverImageUrl={data.coverImageUrl}
+        storyTheme={data.storyTheme}
+      />
       {data.vocabulary.length > 0 && <VocabPage vocabulary={data.vocabulary} />}
       {data.quiz.length > 0 && <QuizPage quiz={data.quiz} />}
     </Document>

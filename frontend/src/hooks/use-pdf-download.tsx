@@ -13,11 +13,13 @@
 import * as React from "react";
 import { pdf } from "@react-pdf/renderer";
 import type { StoryResponse, StoredPayload } from "@/lib/auth-types";
-import { STORY_SESSION_KEY, STORY_PAYLOAD_SESSION_KEY } from "@/lib/auth-types";
+import { STORY_SESSION_KEY, STORY_PAYLOAD_SESSION_KEY, PHOTO_SESSION_KEY, CREATOR_NAME_SESSION_KEY } from "@/lib/auth-types";
 import type { PdfStoryData, PdfStoryPage, PdfStoryMeta } from "@/components/ui/story-pdf-document";
 import { StoryPdfDocument } from "@/components/ui/story-pdf-document";
 import { GRADIENTS, ILLUSTRATIONS } from "@/lib/story-constants";
 import { ENCHANTED_FOREST_SAMPLE } from "@/lib/enchanted-forest-sample";
+
+const FASTAPI_URL = (typeof process !== "undefined" && process.env?.NEXT_PUBLIC_FASTAPI_URL) ?? "http://localhost:8000";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -55,6 +57,26 @@ function readSessionPayload(): StoredPayload | null {
     const raw = sessionStorage.getItem(STORY_PAYLOAD_SESSION_KEY);
     if (!raw) return null;
     return JSON.parse(raw) as StoredPayload;
+  } catch {
+    return null;
+  }
+}
+
+/** Read the creator photo data URL from sessionStorage. */
+function readSessionPhoto(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return sessionStorage.getItem(PHOTO_SESSION_KEY);
+  } catch {
+    return null;
+  }
+}
+
+/** Read the creator name from sessionStorage. */
+function readSessionCreatorName(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return sessionStorage.getItem(CREATOR_NAME_SESSION_KEY);
   } catch {
     return null;
   }
@@ -123,6 +145,12 @@ function buildPdfData(story: StoryResponse): PdfStoryData {
   }));
 
   const payload = readSessionPayload();
+  const photo   = readSessionPhoto();
+  const creator = readSessionCreatorName();
+
+  const coverImageUrl = story.coverImageUrl
+    ? `${FASTAPI_URL}${story.coverImageUrl}`
+    : undefined;
 
   return {
     title: story.title,
@@ -130,6 +158,10 @@ function buildPdfData(story: StoryResponse): PdfStoryData {
     vocabulary: story.vocabulary ?? [],
     quiz:       story.quiz ?? [],
     storyMeta:  payload ? buildStoryMeta(payload) : undefined,
+    coverImageUrl,
+    parentPhotoUrl: photo ?? undefined,
+    creatorName: creator ?? undefined,
+    storyTheme: story.theme,
   };
 }
 
@@ -172,6 +204,8 @@ export function usePdfDownload(): UsePdfDownloadResult {
     } catch (err) {
       const msg = err instanceof Error ? err.message : "PDF generation failed. Please try again.";
       setError(msg);
+      console.log(err);
+      
       throw err; // re-throw so caller can show toast
     } finally {
       setIsGenerating(false);
