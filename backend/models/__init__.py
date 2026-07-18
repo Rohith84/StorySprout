@@ -101,3 +101,42 @@ class SharePayload(BaseModel):
 class SharePayloadResponse(BaseModel):
     code: str
     url: str
+
+
+class UserSettings(BaseModel):
+    userId: str
+    theme: str
+    lang: str
+    voice: str
+    readingSpeed: int
+
+
+class SavedStoryPage(BaseModel):
+    pageNumber: int
+    text: str
+
+
+class SavedStoryQuiz(BaseModel):
+    question: str
+    options: List[str]
+    answer: str
+
+
+class SavedStoryVocabulary(BaseModel):
+    word: str
+    meaning: str
+
+
+class SavedStory(BaseModel):
+    storyId: str
+    userId: str
+    title: str
+    pages: List[SavedStoryPage]
+    quiz: List[SavedStoryQuiz]
+    vocabulary: List[SavedStoryVocabulary]
+    coverImageUrl: Optional[str] = None
+    heroDescription: Optional[str] = None
+    artStyle: Optional[str] = None
+    theme: Optional[str] = None
+    createdAt: Optional[str] = None
+

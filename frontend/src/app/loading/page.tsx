@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { CheckCircle2, AlertCircle } from "lucide-react";
 import type { StoryResponse } from "@/lib/auth-types";
 import { STORY_SESSION_KEY, STORY_PAYLOAD_SESSION_KEY } from "@/lib/auth-types";
+import { useAuth } from "@/hooks/use-auth";
+
 
 const FASTAPI_URL = process.env.NEXT_PUBLIC_FASTAPI_URL ?? "http://localhost:8000";
 
@@ -18,15 +20,26 @@ const STEPS = [
   { id: 5, label: "Almost ready!",          emoji: "📖",  color: "#FFE66D", desc: "Your storybook is coming to life…" },
 ];
 
-// Module-level stable particles (avoids re-generating on re-render)
+// Deterministic PRNG to avoid SSR/client hydration mismatch from Math.random()
+function mulberry32(seed: number) {
+  return () => {
+    seed |= 0; seed = (seed + 0x6d2b79f5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+// Module-level stable particles with deterministic seed (same on server & client)
+const _rng = mulberry32(42);
 const magicParticles = Array.from({ length: 18 }, (_, i) => ({
   id: i,
-  x: Math.random() * 100,
-  y: Math.random() * 100,
-  size: 8 + Math.random() * 14,
-  delay: Math.random() * 3,
-  dur: 3 + Math.random() * 4,
-  emoji: ["✨", "⭐", "💫", "🌟"][Math.floor(Math.random() * 4)],
+  x: _rng() * 100,
+  y: _rng() * 100,
+  size: 8 + _rng() * 14,
+  delay: _rng() * 3,
+  dur: 3 + _rng() * 4,
+  emoji: ["✨", "⭐", "💫", "🌟"][Math.floor(_rng() * 4)],
 }));
 
 function OpeningBook() {
@@ -82,6 +95,8 @@ function CharacterSketch() {
 
 export default function LoadingPage() {
   const router = useRouter();
+  const { user } = useAuth();
+  const userId = user?.anonymousUserId || "default_user";
 
   // Phase: 0=idle 1=story 2=image 3=done
   const [phase,        setPhase]       = React.useState<0|1|2|3>(0);
@@ -188,7 +203,28 @@ export default function LoadingPage() {
     // ── 4. Persist enriched story and navigate ────────────────────────────────
     try {
       sessionStorage.setItem(STORY_SESSION_KEY, JSON.stringify(enrichedStory));
-    } catch { /* quota — non-fatal */ }
+      
+      // Save story to MongoDB
+      const storyId = `story_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+      await fetch("/api/stories", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          storyId,
+          userId,
+          title: enrichedStory.title,
+          pages: enrichedStory.pages.map(p => ({ pageNumber: p.pageNumber, text: p.text })),
+          quiz: enrichedStory.quiz.map(q => ({ question: q.question, options: Array.from(q.options), answer: q.answer })),
+          vocabulary: enrichedStory.vocabulary.map(v => ({ word: v.word, meaning: v.meaning })),
+          coverImageUrl: enrichedStory.coverImageUrl || null,
+          heroDescription: enrichedStory.heroDescription || null,
+          artStyle: enrichedStory.artStyle || null,
+          theme: enrichedStory.theme || null
+        })
+      });
+    } catch (err) {
+      console.error("Failed to save story to MongoDB:", err);
+    }
 
     animateProgressTo(100);
     await sleep(500);

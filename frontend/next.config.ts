@@ -8,6 +8,8 @@ const nextConfig: NextConfig = {
     root: path.resolve(__dirname),
   },
 
+  transpilePackages: ["next-auth"],
+
   images: {
     remotePatterns: [
       {

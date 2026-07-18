@@ -77,13 +77,13 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     return () => mq.removeEventListener("change", onChange);
   }, [theme]);
 
-  function setTheme(t: Theme) {
+  const setTheme = React.useCallback((t: Theme) => {
     const resolved = t === "system" ? getSystemTheme() : t;
     setThemeState(t);
     setResolvedTheme(resolved);
     applyTheme(resolved);
     try { localStorage.setItem(STORAGE_KEY, t); } catch { /* quota full */ }
-  }
+  }, []);
 
   return (
     <ThemeContext.Provider value={{ theme, resolvedTheme, setTheme }}>

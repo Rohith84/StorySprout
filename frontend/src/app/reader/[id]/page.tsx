@@ -3,6 +3,8 @@
 import * as React from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import Link from "next/link";
+import { useParams } from "next/navigation";
+
 import {
   ChevronLeft, ChevronRight, Bookmark, Maximize2, ZoomIn, ZoomOut,
   Volume2, Moon, Sun, Download,
@@ -149,6 +151,11 @@ function FloatingPageIcons({
   pageKey: number;
 }) {
   const prefersReduced = useReducedMotion();
+  const [mounted, setMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const icons = React.useMemo(() => {
     const iconKey = resolveIconKey(theme);
@@ -168,9 +175,10 @@ function FloatingPageIcons({
         kind:  (i % 3) as 0 | 1 | 2,                         // drift pattern
       };
     });
-  // recompute when pageKey changes so the icons match the new page
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pageKey, theme]);
+
+  if (!mounted) return null;
 
   const opacity = darkMode ? 0.22 : 0.16;
 
@@ -184,8 +192,8 @@ function FloatingPageIcons({
             aria-hidden="true"
             className="absolute pointer-events-none select-none"
             style={{
-              left:     `${p.x}%`,
-              top:      `${p.y}%`,
+              left:     `${p.x.toFixed(4)}%`,
+              top:      `${p.y.toFixed(4)}%`,
               fontSize: p.size,
               opacity,
             }}
@@ -197,7 +205,7 @@ function FloatingPageIcons({
             key={p.id}
             aria-hidden="true"
             className="absolute pointer-events-none select-none"
-            style={{ left: `${p.x}%`, top: `${p.y}%`, fontSize: p.size, opacity }}
+            style={{ left: `${p.x.toFixed(4)}%`, top: `${p.y.toFixed(4)}%`, fontSize: p.size, opacity }}
             animate={
               p.kind === 0
                 ? { y: [0, -14, 0],       opacity: [opacity, opacity * 1.7, opacity] }
@@ -260,12 +268,13 @@ const SAMPLE_PAGES: ReaderPage[] = [
 // ─────────────────────────────────────────────────────────────────────────────
 
 function useStoryData() {
+  const params = useParams();
+  const id = params?.id as string | undefined;
+
   const [pages,          setPages]          = React.useState<ReaderPage[]>(SAMPLE_PAGES);
   const [storyTitle,     setStoryTitle]     = React.useState("My Story");
   const [storyTheme,     setStoryTheme]     = React.useState<string | undefined>(undefined);
   const [factChecked,    setFactChecked]    = React.useState(false);
-  // coverImageUrl is pre-loaded by the loading page and stored in sessionStorage.
-  // coverLoading stays false — we no longer do a lazy fetch here.
   const [coverImageUrl,  setCoverImageUrl]  = React.useState<string | null>(null);
   const coverLoading = false;
   const [parentPhotoUrl, setParentPhotoUrl] = React.useState<string | null>(null);
@@ -282,34 +291,57 @@ function useStoryData() {
       if (savedName) setCreatorName(savedName);
     }
 
-    // 2. Story
-    const raw = sessionStorage.getItem(STORY_SESSION_KEY);
-    if (!raw) return;
-    let story: StoryResponse;
-    try {
-      story = JSON.parse(raw) as StoryResponse;
-      if (!story.pages?.length) return;
-    } catch { return; }
+    // 2. Story loading
+    if (id && id !== "1") {
+      async function loadDbStory() {
+        try {
+          const res = await fetch(`/api/stories/${id}`);
+          if (res.ok) {
+            const story = await res.json();
+            setStoryTitle(story.title);
+            setStoryTheme(story.theme);
+            setFactChecked(story._fact_checked === true);
+            if (story.coverImageUrl) setCoverImageUrl(story.coverImageUrl);
+            
+            const basePages: ReaderPage[] = story.pages.map((p: any) => ({
+              pageNum:      p.pageNumber,
+              text:         p.text,
+              imageUrl:     "",
+              imageLoading: false,
+            }));
+            setPages(basePages);
+          }
+        } catch (err) {
+          console.error("Failed to load story from database:", err);
+        }
+      }
+      loadDbStory();
+    } else {
+      const raw = sessionStorage.getItem(STORY_SESSION_KEY);
+      if (!raw) return;
+      let story: StoryResponse;
+      try {
+        story = JSON.parse(raw) as StoryResponse;
+        if (!story.pages?.length) return;
+      } catch { return; }
 
-    setStoryTitle(story.title);
-    setStoryTheme(story.theme);
-    setFactChecked(story._fact_checked === true);
+      setStoryTitle(story.title);
+      setStoryTheme(story.theme);
+      setFactChecked(story._fact_checked === true);
 
-    // Pages carry text only — no per-page imageUrl any more.
-    const basePages: ReaderPage[] = story.pages.map((p) => ({
-      pageNum:      p.pageNumber,
-      text:         p.text,
-      imageUrl:     "",
-      imageLoading: false,
-    }));
-    setPages(basePages);
+      const basePages: ReaderPage[] = story.pages.map((p) => ({
+        pageNum:      p.pageNumber,
+        text:         p.text,
+        imageUrl:     "",
+        imageLoading: false,
+      }));
+      setPages(basePages);
 
-    // 3. Single story illustration — pre-loaded by the loading page.
-    if (story.coverImageUrl) {
-      setCoverImageUrl(story.coverImageUrl);
+      if (story.coverImageUrl) {
+        setCoverImageUrl(story.coverImageUrl);
+      }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [id]);
 
   return { pages, storyTitle, storyTheme, factChecked, coverImageUrl, coverLoading, parentPhotoUrl, creatorName };
 }

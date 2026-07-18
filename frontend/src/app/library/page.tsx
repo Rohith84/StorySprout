@@ -3,6 +3,8 @@
 import * as React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
+import { useAuth } from "@/hooks/use-auth";
+
 import { Search, Filter, Star, Trash2, Copy, BookOpen, Plus, X, SlidersHorizontal, Heart } from "lucide-react";
 import { GlassCard, StoryCard } from "@/components/ui/sprout-cards";
 import { SproutButton } from "@/components/ui/sprout-button";
@@ -10,22 +12,103 @@ import { SearchInput } from "@/components/ui/sprout-inputs";
 import { SproutBadge } from "@/components/ui/sprout-misc";
 import { StoryCardSkeleton } from "@/components/ui/sprout-loading";
 
-const allStories: { id: string; title: string; emoji: string; gradient: "forest" | "sky" | "sunset" | "mint" | "magic"; pages: number; rating: number; age: string; genre: string; isFavorite: boolean; isNew: boolean; createdAt: string }[] = [];
+interface LibraryStory {
+  id: string;
+  title: string;
+  emoji: string;
+  gradient: "forest" | "sky" | "sunset" | "mint" | "magic";
+  pages: number;
+  rating: number;
+  age: string;
+  genre: string;
+  isFavorite: boolean;
+  isNew: boolean;
+  createdAt: string;
+}
+
+function mapDbStoryToLibrary(story: any): LibraryStory {
+  const gradients: ("forest" | "sky" | "sunset" | "mint" | "magic")[] = ["forest", "sky", "sunset", "mint", "magic"];
+  let hash = 0;
+  const str = story.title || "";
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const gradient = gradients[Math.abs(hash) % gradients.length];
+  
+  const themeEmojis: Record<string, string> = {
+    forest: "🌳",
+    sky: "☁️",
+    sunset: "🌅",
+    mint: "🌱",
+    magic: "🪄",
+    space: "🚀",
+    sea: "🐬",
+    adventure: "🧭",
+    animals: "🦁"
+  };
+  const theme = (story.theme || "").toLowerCase();
+  const emoji = themeEmojis[theme] || "📖";
+  
+  let dateStr = "Recently";
+  if (story.createdAt) {
+    try {
+      const d = new Date(story.createdAt);
+      dateStr = d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "2-digit" });
+    } catch {}
+  }
+
+  return {
+    id: story.storyId,
+    title: story.title,
+    emoji,
+    gradient,
+    pages: story.pages?.length || 0,
+    rating: 5,
+    age: "6–8",
+    genre: story.theme || "General",
+    isFavorite: false,
+    isNew: false,
+    createdAt: dateStr
+  };
+}
 
 const ageFilters = ["All Ages", "3–5", "6–8", "9–12"];
 const genreFilters = ["All", "Fantasy", "Adventure", "Science", "Nature", "Friendship"];
 const sortOptions = ["Recently Created", "Highest Rated", "Most Pages", "A–Z"];
 
 export default function LibraryPage() {
+  const { user } = useAuth();
+  const userId = user?.anonymousUserId || "default_user";
+
   const [search, setSearch] = React.useState("");
   const [ageFilter, setAgeFilter] = React.useState("All Ages");
   const [genreFilter, setGenreFilter] = React.useState("All");
   const [sortBy, setSortBy] = React.useState("Recently Created");
   const [showFavoritesOnly, setShowFavoritesOnly] = React.useState(false);
-  const [stories, setStories] = React.useState(allStories);
-  const [loading, setLoading] = React.useState(false);
+  const [stories, setStories] = React.useState<LibraryStory[]>([]);
+  const [loading, setLoading] = React.useState(true);
   const [showFilters, setShowFilters] = React.useState(false);
   const [deleteTarget, setDeleteTarget] = React.useState<string | null>(null);
+
+  const loadUserStories = React.useCallback(async () => {
+    try {
+      setLoading(true);
+      const res = await fetch(`/api/stories?userId=${encodeURIComponent(userId)}`);
+      if (res.ok) {
+        const raw = await res.json();
+        const mapped = raw.map(mapDbStoryToLibrary);
+        setStories(mapped);
+      }
+    } catch (err) {
+      console.error("Failed to load user stories from DB:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [userId]);
+
+  React.useEffect(() => {
+    loadUserStories();
+  }, [loadUserStories]);
 
   const filtered = React.useMemo(() => {
     return stories.filter((s) => {
@@ -37,21 +120,52 @@ export default function LibraryPage() {
     });
   }, [stories, search, ageFilter, genreFilter, showFavoritesOnly]);
 
-  function handleDelete(id: string) {
-    setStories((prev) => prev.filter((s) => s.id !== id));
+  async function handleDelete(id: string) {
+    try {
+      const res = await fetch(`/api/stories/${id}`, {
+        method: "DELETE"
+      });
+      if (res.ok) {
+        setStories((prev) => prev.filter((s) => s.id !== id));
+      }
+    } catch (err) {
+      console.error("Failed to delete story:", err);
+    }
     setDeleteTarget(null);
   }
 
-  function handleDuplicate(id: string) {
-    const story = stories.find((s) => s.id === id);
-    if (!story) return;
-    const copy = { ...story, id: Date.now().toString(), title: `${story.title} (Copy)`, isNew: true, createdAt: "Just now" };
-    setStories((prev) => [copy, ...prev]);
+  async function handleDuplicate(id: string) {
+    try {
+      const detailRes = await fetch(`/api/stories/${id}`);
+      if (!detailRes.ok) return;
+      const story = await detailRes.json();
+      
+      const newStoryId = `story_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+      const duplicatedStory = {
+        ...story,
+        storyId: newStoryId,
+        title: `${story.title} (Copy)`,
+        createdAt: new Date().toISOString()
+      };
+      
+      const saveRes = await fetch("/api/stories", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(duplicatedStory)
+      });
+      
+      if (saveRes.ok) {
+        await loadUserStories();
+      }
+    } catch (err) {
+      console.error("Failed to duplicate story:", err);
+    }
   }
 
   function toggleFavorite(id: string) {
     setStories((prev) => prev.map((s) => s.id === id ? { ...s, isFavorite: !s.isFavorite } : s));
   }
+
 
   return (
     <div className="min-h-screen gradient-page">

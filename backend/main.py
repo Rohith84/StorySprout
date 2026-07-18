@@ -18,12 +18,17 @@ from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 from services.ibm_granite import generate_text, generate_story
 from services.image_gen import generate_story_image, _fetch_and_save, _STATIC_DIR, _STYLE_SUFFIX
-from models import StoryRequest, CoverImageRequest, CoverImageResponse, StoryImageRequest, StoryImageResponse, SharePayload, SharePayloadResponse
+from models import StoryRequest, CoverImageRequest, CoverImageResponse, StoryImageRequest, StoryImageResponse, SharePayload, SharePayloadResponse, UserSettings, SavedStory
 from services.codec import generate_short_code
 from services.story_repository import FileStoryRepository, SharedStory
+from services.database import MongoDBManager
+
 
 # Load .env from backend/ regardless of the working directory
 load_dotenv(dotenv_path=_BACKEND_DIR / ".env")
+
+db_manager = MongoDBManager()
+
 
 # ---------------------------------------------------------------------------
 _repo: FileStoryRepository | None = None
@@ -168,3 +173,77 @@ def get_share(code: str):
         "title": story.title,
         "pages": story.pages,
     }
+
+
+# ---------------------------------------------------------------------------
+# MongoDB User Settings & Generated Stories Endpoints
+# ---------------------------------------------------------------------------
+
+@app.get("/api/settings/{user_id}")
+def get_user_settings(user_id: str):
+    if not db_manager.is_connected:
+        raise HTTPException(status_code=503, detail="Database connection is not available.")
+    
+    settings = db_manager.get_settings(user_id)
+    if settings is None:
+        return {
+            "userId": user_id,
+            "theme": "system",
+            "lang": "en",
+            "voice": "friendly",
+            "readingSpeed": 50
+        }
+    return settings
+
+
+@app.post("/api/settings")
+def save_user_settings(settings: UserSettings):
+    if not db_manager.is_connected:
+        raise HTTPException(status_code=503, detail="Database connection is not available.")
+    
+    success = db_manager.save_settings(settings)
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to save settings.")
+    return {"status": "success"}
+
+
+@app.post("/api/stories", status_code=201)
+def save_generated_story(story: SavedStory):
+    if not db_manager.is_connected:
+        raise HTTPException(status_code=503, detail="Database connection is not available.")
+    
+    success = db_manager.save_story(story)
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to save story.")
+    return {"status": "success", "storyId": story.storyId}
+
+
+@app.get("/api/stories/user/{user_id}")
+def list_user_stories(user_id: str):
+    if not db_manager.is_connected:
+        raise HTTPException(status_code=503, detail="Database connection is not available.")
+    
+    return db_manager.list_stories(user_id)
+
+
+@app.get("/api/stories/{story_id}")
+def get_story_details(story_id: str):
+    if not db_manager.is_connected:
+        raise HTTPException(status_code=503, detail="Database connection is not available.")
+    
+    story = db_manager.get_story(story_id)
+    if story is None:
+        raise HTTPException(status_code=404, detail="Story not found.")
+    return story
+
+
+@app.delete("/api/stories/{story_id}")
+def delete_user_story(story_id: str):
+    if not db_manager.is_connected:
+        raise HTTPException(status_code=503, detail="Database connection is not available.")
+    
+    success = db_manager.delete_story(story_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Story not found or could not be deleted.")
+    return {"status": "success"}
+

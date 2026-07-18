@@ -23,7 +23,7 @@ const PROTECTED = [
 ];
 
 // Auth.js v5 `auth` can wrap a handler function to act as proxy/middleware.
-export default auth((req: NextRequest & { auth: unknown }) => {
+export const proxy = auth((req: NextRequest & { auth: unknown }) => {
   const { nextUrl } = req;
   const session = (req as { auth: unknown }).auth;
 

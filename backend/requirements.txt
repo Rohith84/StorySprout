@@ -3,3 +3,4 @@ uvicorn[standard]
 python-dotenv
 ibm-watsonx-ai
 httpx
+pymongo[srv]

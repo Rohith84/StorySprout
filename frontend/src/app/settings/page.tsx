@@ -10,6 +10,8 @@ import { SproutBadge } from "@/components/ui/sprout-misc";
 import { useToast, ToastContainer } from "@/components/ui/sprout-misc";
 import { ProgressBar } from "@/components/ui/sprout-misc";
 import { useTheme } from "@/providers/theme-provider";
+import { useAuth } from "@/hooks/use-auth";
+
 
 const languages = [
   { code: "en", label: "English",  flag: "🇬🇧" },
@@ -64,6 +66,9 @@ function SettingsSection({ title, icon, children }: { title: string; icon: strin
 export default function SettingsPage() {
   const { theme, setTheme } = useTheme();
   const { toasts, toast, dismiss } = useToast();
+  const { user } = useAuth();
+  const userId = user?.anonymousUserId || "default_user";
+
   const [mounted, setMounted] = React.useState(false);
   const [lang, setLang] = React.useState("en");
   const [voice, setVoice] = React.useState("friendly");
@@ -72,9 +77,56 @@ export default function SettingsPage() {
 
   React.useEffect(() => setMounted(true), []);
 
-  function handleSave() {
-    toast.success("Settings saved!", "Your preferences have been updated.");
+  // Fetch settings from MongoDB (only once after mount)
+  const settingsLoaded = React.useRef(false);
+  React.useEffect(() => {
+    if (!mounted || settingsLoaded.current) return;
+    settingsLoaded.current = true;
+    
+    let active = true;
+    async function loadSettings() {
+      try {
+        const res = await fetch(`/api/settings?userId=${encodeURIComponent(userId)}`);
+        if (res.ok && active) {
+          const data = await res.json();
+          if (data.theme) setTheme(data.theme);
+          if (data.lang) setLang(data.lang);
+          if (data.voice) setVoice(data.voice);
+          if (data.readingSpeed !== undefined) setReadingSpeed(data.readingSpeed);
+        }
+      } catch (err) {
+        console.error("Failed to load settings from DB:", err);
+      }
+    }
+    loadSettings();
+    return () => { active = false; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mounted, userId]);
+
+  async function handleSave() {
+    try {
+      const res = await fetch("/api/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId,
+          theme: theme || "system",
+          lang,
+          voice,
+          readingSpeed
+        })
+      });
+      if (res.ok) {
+        toast.success("Settings saved! ⚙️", "Your preferences have been saved to the cloud.");
+      } else {
+        throw new Error("Server rejected request.");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to save settings", "Please try again later.");
+    }
   }
+
 
   return (
     <div className="min-h-screen gradient-page">
@@ -83,9 +135,14 @@ export default function SettingsPage() {
       {/* Header */}
       <div className="sticky top-0 z-20 glass border-b border-border/40 px-4 py-3 flex items-center gap-3">
         <Link href="/dashboard">
-          <button className="p-2 rounded-xl hover:bg-muted/60 text-muted-foreground hover:text-foreground transition-colors" aria-label="Back">
-            <ChevronLeft size={20} />
-          </button>
+          <motion.button
+            whileHover={{ scale: 1.08 }}
+            whileTap={{ scale: 0.92 }}
+            className="flex items-center justify-center w-10 h-10 rounded-2xl bg-muted/80 hover:bg-primary/20 text-foreground border border-border/50 transition-colors shadow-sm"
+            aria-label="Back to Dashboard"
+          >
+            <ChevronLeft size={22} />
+          </motion.button>
         </Link>
         <div>
           <h1 className="font-heading font-bold text-base">Settings ⚙️</h1>
