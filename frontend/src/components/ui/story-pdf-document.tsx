@@ -23,6 +23,55 @@ Font.registerEmojiSource({
 });
 
 // ---------------------------------------------------------------------------
+// Unicode font registration
+// Each font maps to a single Google Fonts Noto TTF (verified HTTP 200).
+// "NotoSans"     — Latin / Spanish / English (also used as ultimate fallback)
+// "NotoTamil"    — Tamil
+// "NotoDevanagari" — Hindi / Devanagari
+// "NotoSC"       — Mandarin Chinese (Simplified)
+// ---------------------------------------------------------------------------
+
+Font.register({
+  family: "NotoSans",
+  src: "https://fonts.gstatic.com/s/notosans/v42/o-0mIpQlx3QUlC5A4PNB6Ryti20_6n1iPHjcz6L1SoM-jCpoiyD9A99d.ttf",
+});
+
+Font.register({
+  family: "NotoTamil",
+  src: "https://fonts.gstatic.com/s/notosanstamil/v31/ieVc2YdFI3GCY6SyQy1KfStzYKZgzN1z4LKDbeZce-0429tBManUktuex7vGo70R.ttf",
+});
+
+Font.register({
+  family: "NotoDevanagari",
+  src: "https://fonts.gstatic.com/s/notosansdevanagari/v30/TuGoUUFzXI5FBtUq5a8bjKYTZjtRU6Sgv3NaV_SNmI0b8QQCQmHn6B2OHjbL_08AlXQly-A.ttf",
+});
+
+Font.register({
+  family: "NotoSC",
+  src: "https://fonts.gstatic.com/s/notosanssc/v40/k3kCo84MPvpLmixcA63oeAL7Iqp5IZJF9bmaG9_FnYw.ttf",
+});
+
+// ---------------------------------------------------------------------------
+// Language → fontFamily resolution
+// Returns a registered Noto family for non-Latin scripts; falls back to
+// NotoSans (covers Latin + Spanish) for everything else including English.
+// ---------------------------------------------------------------------------
+
+function resolveFontFamily(language: string | undefined): string {
+  if (!language) return "NotoSans";
+  const lang = language.toLowerCase();
+  if (lang.includes("tamil"))   return "NotoTamil";
+  if (lang.includes("hindi"))   return "NotoDevanagari";
+  if (
+    lang.includes("mandarin") ||
+    lang.includes("chinese") ||
+    lang.includes("中文")
+  ) return "NotoSC";
+  // Spanish, English, and anything else → NotoSans (full Latin coverage)
+  return "NotoSans";
+}
+
+// ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
@@ -536,13 +585,13 @@ function FloatingEmoji({ theme }: { theme: string | undefined }) {
 // CoverPage
 // ---------------------------------------------------------------------------
 
-function CoverPage({ title }: { title: string }) {
+function CoverPage({ title, fontFamily }: { title: string; fontFamily: string }) {
   return (
     <Page size="A4" style={S.pageA4}>
       <GradientRect id="cover-grad" stops={COVER_STOPS} />
       <View style={S.coverContent}>
         <Text style={S.coverEmoji}>📖</Text>
-        <Text style={S.coverTitle}>{title}</Text>
+        <Text style={[S.coverTitle, { fontFamily }]}>{title}</Text>
         <Text style={S.coverSubtitle}>A StorySprout Story</Text>
       </View>
       <Text style={S.coverStorySprout}>Created with StorySprout ✨</Text>
@@ -561,11 +610,13 @@ function StoryPageComponent({
   title,
   coverImageUrl,
   storyTheme,
+  fontFamily,
 }: {
   text: string;
   title: string;
   coverImageUrl?: string;
   storyTheme?: string;
+  fontFamily: string;
 }) {
   const tint = PAGE_TINTS[0];
 
@@ -579,7 +630,7 @@ function StoryPageComponent({
           <Text style={[S.pageHeaderStoryLabel, { color: tint.accent + "bb" }]}>
             ✦ Story
           </Text>
-          <Text style={[S.pageHeaderTitle, { color: tint.text }]}>
+          <Text style={[S.pageHeaderTitle, { color: tint.text, fontFamily }]}>
             {title}
           </Text>
         </View>
@@ -598,7 +649,7 @@ function StoryPageComponent({
 
       {/* Story text — flex:1 so it fills the remaining space; auto-overflows */}
       <View style={S.textArea}>
-        <Text style={S.storyText}>{text}</Text>
+        <Text style={[S.storyText, { fontFamily }]}>{text}</Text>
       </View>
     </Page>
   );
@@ -608,15 +659,15 @@ function StoryPageComponent({
 // VocabPage
 // ---------------------------------------------------------------------------
 
-function VocabPage({ vocabulary }: { vocabulary: PdfVocabItem[] }) {
+function VocabPage({ vocabulary, fontFamily }: { vocabulary: PdfVocabItem[]; fontFamily: string }) {
   return (
     <Page size="A4" style={S.pageA4}>
       <View style={S.sectionPage}>
         <Text style={S.sectionHeading}>Word Bank</Text>
         {vocabulary.map((item, i) => (
           <View key={i} style={S.vocabItem}>
-            <Text style={S.vocabWord}>{item.word}</Text>
-            <Text style={S.vocabMeaning}>{item.meaning}</Text>
+            <Text style={[S.vocabWord, { fontFamily }]}>{item.word}</Text>
+            <Text style={[S.vocabMeaning, { fontFamily }]}>{item.meaning}</Text>
           </View>
         ))}
       </View>
@@ -630,20 +681,20 @@ function VocabPage({ vocabulary }: { vocabulary: PdfVocabItem[] }) {
 
 const OPTION_LABELS = ["A", "B", "C", "D"];
 
-function QuizPage({ quiz }: { quiz: PdfQuizQuestion[] }) {
+function QuizPage({ quiz, fontFamily }: { quiz: PdfQuizQuestion[]; fontFamily: string }) {
   return (
     <Page size="A4" style={S.pageA4}>
       <View style={S.sectionPage}>
         <Text style={S.sectionHeading}>Story Quiz</Text>
         {quiz.map((q, qi) => (
           <View key={qi} style={S.quizItem}>
-            <Text style={S.quizQuestion}>
+            <Text style={[S.quizQuestion, { fontFamily }]}>
               {qi + 1}. {q.question}
             </Text>
             {q.options.map((opt, oi) => {
               const isCorrect = opt === q.answer;
               return (
-                <Text key={oi} style={isCorrect ? S.quizOptionCorrect : S.quizOption}>
+                <Text key={oi} style={[isCorrect ? S.quizOptionCorrect : S.quizOption, { fontFamily }]}>
                   {OPTION_LABELS[oi] ?? oi + 1}. {opt}{isCorrect ? "  ✓" : ""}
                 </Text>
               );
@@ -662,18 +713,19 @@ function QuizPage({ quiz }: { quiz: PdfQuizQuestion[] }) {
 interface MetaRowProps {
   label: string;
   value: string;
+  fontFamily: string;
 }
 
-function MetaRow({ label, value }: MetaRowProps) {
+function MetaRow({ label, value, fontFamily }: MetaRowProps) {
   return (
     <View style={S.detailsRow}>
       <Text style={S.detailsLabel}>{label}</Text>
-      <Text style={S.detailsValue}>{value}</Text>
+      <Text style={[S.detailsValue, { fontFamily }]}>{value}</Text>
     </View>
   );
 }
 
-function StoryDetailsPage({ meta }: { meta: PdfStoryMeta }) {
+function StoryDetailsPage({ meta, fontFamily }: { meta: PdfStoryMeta; fontFamily: string }) {
   return (
     <Page size="A4" style={S.pageA4}>
       {/* Gradient header strip */}
@@ -684,16 +736,16 @@ function StoryDetailsPage({ meta }: { meta: PdfStoryMeta }) {
       </View>
 
       <View style={S.detailsBody}>
-        {meta.heroName  && <MetaRow label="Hero Name"    value={meta.heroName} />}
-        {meta.heroType  && <MetaRow label="Hero Type"    value={meta.heroType} />}
-        <MetaRow label="Theme"       value={meta.theme} />
-        <MetaRow label="Age Group"   value={meta.ageLevel} />
-        {meta.language  && <MetaRow label="Language"    value={meta.language} />}
-        <MetaRow label="Story Type"  value={meta.storyType} />
-        {meta.incident  && <MetaRow label="Incident"    value={meta.incident} />}
-        {meta.lesson    && <MetaRow label="Lesson"      value={meta.lesson} />}
-        <MetaRow label="Art Style"   value={meta.artStyle} />
-        <MetaRow label="Story Length" value={meta.length} />
+        {meta.heroName  && <MetaRow label="Hero Name"    value={meta.heroName}  fontFamily={fontFamily} />}
+        {meta.heroType  && <MetaRow label="Hero Type"    value={meta.heroType}  fontFamily={fontFamily} />}
+        <MetaRow label="Theme"       value={meta.theme}     fontFamily={fontFamily} />
+        <MetaRow label="Age Group"   value={meta.ageLevel}  fontFamily={fontFamily} />
+        {meta.language  && <MetaRow label="Language"    value={meta.language}  fontFamily={fontFamily} />}
+        <MetaRow label="Story Type"  value={meta.storyType} fontFamily={fontFamily} />
+        {meta.incident  && <MetaRow label="Incident"    value={meta.incident}  fontFamily={fontFamily} />}
+        {meta.lesson    && <MetaRow label="Lesson"      value={meta.lesson}    fontFamily={fontFamily} />}
+        <MetaRow label="Art Style"   value={meta.artStyle}  fontFamily={fontFamily} />
+        <MetaRow label="Story Length" value={meta.length}   fontFamily={fontFamily} />
 
         <View style={S.detailsCreatedRow}>
           <Text style={S.detailsCreatedLabel}>Created On</Text>
@@ -718,18 +770,21 @@ export function StoryPdfDocument({ data }: StoryPdfDocumentProps) {
     [data.pages]
   );
 
+  const fontFamily = resolveFontFamily(data.storyMeta?.language);
+
   return (
     <Document title={data.title} author="StorySprout" producer="StorySprout">
-      <CoverPage title={data.title} />
-      {data.storyMeta && <StoryDetailsPage meta={data.storyMeta} />}
+      <CoverPage title={data.title} fontFamily={fontFamily} />
+      {data.storyMeta && <StoryDetailsPage meta={data.storyMeta} fontFamily={fontFamily} />}
       <StoryPageComponent
         text={storyText}
         title={data.title}
         coverImageUrl={data.coverImageUrl}
         storyTheme={data.storyTheme}
+        fontFamily={fontFamily}
       />
-      {data.vocabulary.length > 0 && <VocabPage vocabulary={data.vocabulary} />}
-      {data.quiz.length > 0 && <QuizPage quiz={data.quiz} />}
+      {data.vocabulary.length > 0 && <VocabPage vocabulary={data.vocabulary} fontFamily={fontFamily} />}
+      {data.quiz.length > 0 && <QuizPage quiz={data.quiz} fontFamily={fontFamily} />}
     </Document>
   );
 }
