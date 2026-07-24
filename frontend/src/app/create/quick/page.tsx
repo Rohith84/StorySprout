@@ -120,7 +120,7 @@ function StepNickname({ value, onChange }: { value: string; onChange: (v: string
         >
           🧒
         </motion.div>
-        <h2 className="font-heading font-extrabold text-2xl">What's your child's nickname?</h2>
+        <h2 className="font-heading font-extrabold text-2xl">Give your little hero a name</h2>
         <p className="text-xs text-muted-foreground font-body">
           Used only inside the story — never saved or stored.
         </p>
@@ -150,7 +150,7 @@ function StepTheme({ value, onChange }: { value: string; onChange: (v: string) =
     <div className="space-y-5">
       <div className="space-y-1">
         <motion.div initial={{ scale: 0.6, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: "spring", stiffness: 280, damping: 20 }} className="text-5xl">🌈</motion.div>
-        <h2 className="font-heading font-extrabold text-2xl">Pick a favourite theme</h2>
+        <h2 className="font-heading font-extrabold text-2xl">Choose your adventure world</h2>
       </div>
       <div className="grid grid-cols-2 gap-2.5">
         {THEMES.map((t) => (
@@ -168,7 +168,7 @@ function StepAge({ value, onChange }: { value: string; onChange: (v: string) => 
     <div className="space-y-5">
       <div className="space-y-1">
         <motion.div initial={{ scale: 0.6, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: "spring", stiffness: 280, damping: 20 }} className="text-5xl">📅</motion.div>
-        <h2 className="font-heading font-extrabold text-2xl">How old is your child?</h2>
+        <h2 className="font-heading font-extrabold text-2xl">Choose the right story level</h2>
       </div>
       <div className="flex flex-col gap-2.5">
         {AGE_RANGES.map((a) => (
@@ -186,7 +186,7 @@ function StepLanguage({ value, onChange }: { value: string; onChange: (v: string
     <div className="space-y-5">
       <div className="space-y-1">
         <motion.div initial={{ scale: 0.6, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: "spring", stiffness: 280, damping: 20 }} className="text-5xl">🌍</motion.div>
-        <h2 className="font-heading font-extrabold text-2xl">Story language?</h2>
+        <h2 className="font-heading font-extrabold text-2xl">Pick the language of magic</h2>
       </div>
       <div className="grid grid-cols-2 gap-2.5">
         {LANGUAGES.map((l) => (
@@ -204,7 +204,7 @@ function StepArtStyle({ value, onChange }: { value: string; onChange: (v: string
     <div className="space-y-5">
       <div className="space-y-1">
         <motion.div initial={{ scale: 0.6, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: "spring", stiffness: 280, damping: 20 }} className="text-5xl">🖼️</motion.div>
-        <h2 className="font-heading font-extrabold text-2xl">Illustration style?</h2>
+        <h2 className="font-heading font-extrabold text-2xl">Select your visual magic</h2>
       </div>
       <div className="flex flex-col gap-2.5">
         {ART_STYLES.map((s) => (
@@ -351,7 +351,7 @@ export default function QuickCreatePage() {
             </div>
             <div className="flex flex-col gap-3">
               <SproutButton variant="primary" size="lg" className="w-full" leftIcon={<Sparkles size={18} />} onClick={next}>
-                Start Quick Story →
+                One-Click Story Adventure →
               </SproutButton>
               <Link href="/create">
                 <SproutButton variant="ghost" size="md" className="w-full">← Back to mode selection</SproutButton>

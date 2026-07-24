@@ -746,7 +746,7 @@ function SummaryScreen({ wizard }: { wizard: ReturnType<typeof useWizard> }) {
         loading={submitting}
         leftIcon={!submitting ? <Wand2 size={20} /> : undefined}
       >
-        ✨ Create my story
+        ✨ Bring My Story to Life
         {!submitting && (
           <motion.div
             className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"

@@ -144,7 +144,7 @@ function HeroSection() {
         >
           <Link href="/create">
             <SproutButton variant="primary" size="xl" leftIcon={<Wand2 size={20} />} rightIcon={<ArrowRight size={16} />}>
-              Start Creating
+              Create a Wonder Tale
             </SproutButton>
           </Link>
           <Link href="/library">
