@@ -15,7 +15,7 @@ import * as React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Sparkles, ChevronLeft, ChevronRight, Loader2, AlertCircle } from "lucide-react";
+import { Sparkles, ChevronLeft, ChevronRight, Loader2, AlertCircle, Mic, MicOff } from "lucide-react";
 import { GlassCard } from "@/components/ui/sprout-cards";
 import { SproutButton } from "@/components/ui/sprout-button";
 import { SproutBadge } from "@/components/ui/sprout-misc";
@@ -106,9 +106,82 @@ function Pill({
   );
 }
 
+/* ── voice-input hook ────────────────────────────────────── */
+
+type VoiceStatus = "idle" | "listening" | "unsupported" | "denied" | "error";
+
+function useVoiceInput(onResult: (text: string) => void) {
+  const [status, setStatus] = React.useState<VoiceStatus>("idle");
+  const recognitionRef = React.useRef<InstanceType<typeof window.SpeechRecognition> | null>(null);
+
+  // Detect support once on mount (client-only)
+  const supported = React.useMemo(() => {
+    if (typeof window === "undefined") return false;
+    return !!(
+      (window as Window & { SpeechRecognition?: unknown; webkitSpeechRecognition?: unknown })
+        .SpeechRecognition ||
+      (window as Window & { SpeechRecognition?: unknown; webkitSpeechRecognition?: unknown })
+        .webkitSpeechRecognition
+    );
+  }, []);
+
+  const start = React.useCallback(() => {
+    if (!supported) { setStatus("unsupported"); return; }
+    if (status === "listening") return;
+
+    const SR: typeof window.SpeechRecognition =
+      (window as Window & { SpeechRecognition?: typeof window.SpeechRecognition; webkitSpeechRecognition?: typeof window.SpeechRecognition })
+        .SpeechRecognition ??
+      (window as Window & { SpeechRecognition?: typeof window.SpeechRecognition; webkitSpeechRecognition?: typeof window.SpeechRecognition })
+        .webkitSpeechRecognition!;
+
+    const rec = new SR();
+    rec.lang = "en-US";
+    rec.interimResults = false;
+    rec.maxAlternatives = 1;
+
+    rec.onstart = () => setStatus("listening");
+
+    rec.onresult = (e: SpeechRecognitionEvent) => {
+      const transcript = e.results[0]?.[0]?.transcript ?? "";
+      onResult(transcript.trim());
+      setStatus("idle");
+    };
+
+    rec.onerror = (e: SpeechRecognitionErrorEvent) => {
+      if (e.error === "not-allowed" || e.error === "service-not-allowed") {
+        setStatus("denied");
+      } else {
+        setStatus("error");
+      }
+    };
+
+    rec.onend = () => {
+      // If we're still "listening" after end without a result, go back to idle
+      setStatus((prev) => (prev === "listening" ? "idle" : prev));
+    };
+
+    recognitionRef.current = rec;
+    rec.start();
+  }, [supported, status, onResult]);
+
+  const stop = React.useCallback(() => {
+    recognitionRef.current?.stop();
+    setStatus("idle");
+  }, []);
+
+  return { status, supported, start, stop };
+}
+
 /* ── step 1: nickname ────────────────────────────────────── */
 
 function StepNickname({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const { status, supported, start, stop } = useVoiceInput((text) => {
+    if (text) onChange(text);
+  });
+
+  const isListening = status === "listening";
+
   return (
     <div className="space-y-5">
       <div className="space-y-1">
@@ -125,20 +198,74 @@ function StepNickname({ value, onChange }: { value: string; onChange: (v: string
           Used only inside the story — never saved or stored.
         </p>
       </div>
-      <input
-        type="text"
-        maxLength={30}
-        placeholder="e.g. Sunny, Leo, Mia…"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="
-          w-full rounded-2xl border border-border/60 bg-muted/40 px-4 py-3
-          font-body text-base text-foreground placeholder:text-muted-foreground
-          focus:outline-none focus:ring-2 focus:ring-primary/60 focus:border-primary
-          transition-all
-        "
-        autoFocus
-      />
+
+      {/* input + mic row */}
+      <div className="flex items-center gap-2">
+        <input
+          type="text"
+          maxLength={30}
+          placeholder="e.g. Sunny, Leo, Mia…"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="
+            flex-1 rounded-2xl border border-border/60 bg-muted/40 px-4 py-3
+            font-body text-base text-foreground placeholder:text-muted-foreground
+            focus:outline-none focus:ring-2 focus:ring-primary/60 focus:border-primary
+            transition-all
+          "
+          autoFocus
+        />
+
+        {/* mic button — hidden on unsupported browsers (message shown below instead) */}
+        {supported && (
+          <motion.button
+            type="button"
+            aria-label={isListening ? "Stop listening" : "Start voice input"}
+            onClick={isListening ? stop : start}
+            whileTap={{ scale: 0.92 }}
+            className={`
+              flex-shrink-0 flex items-center justify-center w-12 h-12 rounded-2xl border-2
+              transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60
+              ${isListening
+                ? "border-red-400 bg-red-500/10 text-red-500 hover:bg-red-500/20"
+                : "border-border/60 bg-muted/40 text-muted-foreground hover:border-primary/60 hover:text-primary hover:bg-primary/10"
+              }
+            `}
+          >
+            {isListening ? <MicOff size={20} /> : <Mic size={20} />}
+          </motion.button>
+        )}
+      </div>
+
+      {/* status / error messages */}
+      {isListening && (
+        <motion.p
+          initial={{ opacity: 0, y: -4 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex items-center gap-1.5 text-xs font-body text-red-500"
+        >
+          <span className="inline-block w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+          Listening… say the name, then stop.
+        </motion.p>
+      )}
+
+      {status === "denied" && (
+        <p className="text-xs font-body text-muted-foreground bg-muted/60 rounded-xl px-3 py-2">
+          🎙️ Microphone permission was not allowed. Please type the name.
+        </p>
+      )}
+
+      {status === "error" && (
+        <p className="text-xs font-body text-muted-foreground bg-muted/60 rounded-xl px-3 py-2">
+          🎙️ Voice input failed. Please type the name.
+        </p>
+      )}
+
+      {!supported && (
+        <p className="text-xs font-body text-muted-foreground bg-muted/60 rounded-xl px-3 py-2">
+          🎙️ Voice input is not supported in this browser. Please type the name.
+        </p>
+      )}
     </div>
   );
 }
