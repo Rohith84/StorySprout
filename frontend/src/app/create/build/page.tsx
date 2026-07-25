@@ -886,7 +886,7 @@ export default function BuildStoryPage() {
         </motion.span>
       ))}
 
-      <div className="max-w-2xl mx-auto px-4 py-8 pb-32 space-y-6 relative z-10">
+      <div className="max-w-2xl mx-auto px-4 py-8 space-y-6 relative z-10">
         {/* Top bar */}
         <div className="flex items-center gap-3">
           <Link
@@ -931,59 +931,59 @@ export default function BuildStoryPage() {
             </motion.div>
           </AnimatePresence>
         </GlassCard>
-      </div>
 
-      {/* Fixed bottom navigation */}
-      {!wizard.submitted && (
-        <div className="fixed bottom-0 left-0 right-0 lg:left-16 z-40 glass border-t border-border/40 px-4 py-4 safe-area-inset-bottom">
-          <div className="max-w-2xl mx-auto flex items-center gap-3">
-            <SproutButton
-              variant="glass"
-              size="lg"
-              className="flex-1"
-              onClick={handleBack}
-              disabled={wizard.step === 1}
-              leftIcon={<ChevronLeft size={18} />}
-            >
-              Back
-            </SproutButton>
-
-            {!wizard.isSummary ? (
+        {/* inline nav row — sits just below the card */}
+        {!wizard.submitted && (
+          <div className="mt-6">
+            <div className="flex items-center gap-3">
               <SproutButton
-                variant="primary"
+                variant="glass"
                 size="lg"
-                className="flex-1 relative overflow-hidden"
-                onClick={handleNext}
-                disabled={!ok}
-                rightIcon={<ChevronRight size={18} />}
+                className="flex-1"
+                onClick={handleBack}
+                disabled={wizard.step === 1}
+                leftIcon={<ChevronLeft size={18} />}
               >
-                {wizard.step === TOTAL_STEPS ? "Review" : "Next"}
-                {ok && (
-                  <motion.div
-                    className="absolute inset-0 bg-gradient-to-r from-transparent via-white/15 to-transparent"
-                    animate={{ x: ["-100%", "200%"] }}
-                    transition={{ duration: 2, repeat: Infinity, repeatDelay: 2.5 }}
-                  />
-                )}
+                Back
               </SproutButton>
-            ) : (
-              /* On summary, the CTA is inside the card */
-              <div className="flex-1 flex justify-center">
-                <span className="text-xs text-muted-foreground font-body text-center">
-                  Review above, then click ✨&nbsp;Create my story
-                </span>
-              </div>
+
+              {!wizard.isSummary ? (
+                <SproutButton
+                  variant="primary"
+                  size="lg"
+                  className="flex-1 relative overflow-hidden"
+                  onClick={handleNext}
+                  disabled={!ok}
+                  rightIcon={<ChevronRight size={18} />}
+                >
+                  {wizard.step === TOTAL_STEPS ? "Review" : "Next"}
+                  {ok && (
+                    <motion.div
+                      className="absolute inset-0 bg-gradient-to-r from-transparent via-white/15 to-transparent"
+                      animate={{ x: ["-100%", "200%"] }}
+                      transition={{ duration: 2, repeat: Infinity, repeatDelay: 2.5 }}
+                    />
+                  )}
+                </SproutButton>
+              ) : (
+                /* On summary, the CTA is inside the card */
+                <div className="flex-1 flex justify-center">
+                  <span className="text-xs text-muted-foreground font-body text-center">
+                    Review above, then click ✨&nbsp;Create my story
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Can't proceed hint */}
+            {!ok && !wizard.isSummary && (
+              <p className="text-center text-xs text-muted-foreground font-body mt-2">
+                Choose an option above to continue
+              </p>
             )}
           </div>
-
-          {/* Can't proceed hint */}
-          {!ok && !wizard.isSummary && (
-            <p className="text-center text-xs text-muted-foreground font-body mt-2">
-              Choose an option above to continue
-            </p>
-          )}
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

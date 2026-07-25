@@ -500,7 +500,7 @@ export default function QuickCreatePage() {
           aria-hidden>{e}</motion.span>
       ))}
 
-      <div className="max-w-xl mx-auto px-4 py-8 pb-32 space-y-6 relative z-10">
+      <div className="max-w-xl mx-auto px-4 py-8 space-y-6 relative z-10">
         {/* top bar */}
         <div className="flex items-center gap-3">
           <button onClick={back} className="p-2 rounded-xl hover:bg-muted/60 text-muted-foreground hover:text-foreground transition-colors" aria-label="Back">
@@ -533,28 +533,28 @@ export default function QuickCreatePage() {
             {error}
           </div>
         )}
-      </div>
 
-      {/* fixed bottom nav */}
-      <div className="fixed bottom-0 left-0 right-0 lg:left-16 z-40 glass border-t border-border/40 px-4 py-4">
-        <div className="max-w-xl mx-auto flex items-center gap-3">
-          <SproutButton variant="glass" size="lg" className="flex-1" onClick={back} leftIcon={<ChevronLeft size={18} />}>
-            Back
-          </SproutButton>
-          {step < TOTAL_STEPS ? (
-            <SproutButton variant="primary" size="lg" className="flex-1" onClick={next} disabled={!canProceed()} rightIcon={<ChevronRight size={18} />}>
-              Next
+        {/* inline nav row — sits just below the card */}
+        <div className="mt-6">
+          <div className="flex items-center gap-3">
+            <SproutButton variant="glass" size="lg" className="flex-1" onClick={back} leftIcon={<ChevronLeft size={18} />}>
+              Back
             </SproutButton>
-          ) : (
-            <SproutButton variant="primary" size="lg" className="flex-1" onClick={handleSubmit} disabled={!canProceed() || submitting}
-              leftIcon={submitting ? <Loader2 size={18} className="animate-spin" /> : <Sparkles size={18} />}>
-              {submitting ? "Creating…" : "Create My Story ✨"}
-            </SproutButton>
+            {step < TOTAL_STEPS ? (
+              <SproutButton variant="primary" size="lg" className="flex-1" onClick={next} disabled={!canProceed()} rightIcon={<ChevronRight size={18} />}>
+                Next
+              </SproutButton>
+            ) : (
+              <SproutButton variant="primary" size="lg" className="flex-1" onClick={handleSubmit} disabled={!canProceed() || submitting}
+                leftIcon={submitting ? <Loader2 size={18} className="animate-spin" /> : <Sparkles size={18} />}>
+                {submitting ? "Creating…" : "Create My Story ✨"}
+              </SproutButton>
+            )}
+          </div>
+          {!canProceed() && step < TOTAL_STEPS && (
+            <p className="text-center text-xs text-muted-foreground font-body mt-2">Choose an option above to continue</p>
           )}
         </div>
-        {!canProceed() && step < TOTAL_STEPS && (
-          <p className="text-center text-xs text-muted-foreground font-body mt-2">Choose an option above to continue</p>
-        )}
       </div>
     </div>
   );

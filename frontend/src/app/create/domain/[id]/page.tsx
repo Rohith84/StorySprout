@@ -1410,7 +1410,7 @@ export default function DomainWizardPage({ params }: { params: Promise<{ id: str
       </div>
 
       {/* Step content */}
-      <div className="max-w-xl mx-auto px-4 py-8 pb-32">
+      <div className="max-w-xl mx-auto px-4 py-8">
         <AnimatePresence mode="wait" custom={direction}>
           {wizard.isSummary ? (
             <motion.div
@@ -1438,12 +1438,10 @@ export default function DomainWizardPage({ params }: { params: Promise<{ id: str
             </motion.div>
           )}
         </AnimatePresence>
-      </div>
 
-      {/* Navigation footer */}
-      {!wizard.isSummary && (
-        <div className="fixed bottom-0 left-0 right-0 lg:left-16 z-20 glass border-t border-border/40 px-4 py-4">
-          <div className="max-w-xl mx-auto flex items-center justify-between gap-4">
+        {/* inline nav row — sits just below the step content */}
+        {!wizard.isSummary && (
+          <div className="mt-6 flex items-center justify-between gap-4">
             <SproutButton
               variant="ghost" size="md"
               leftIcon={<ChevronLeft size={18} />}
@@ -1463,8 +1461,8 @@ export default function DomainWizardPage({ params }: { params: Promise<{ id: str
               {wizard.step === wizard.totalSteps ? "Review" : "Next"}
             </SproutButton>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
