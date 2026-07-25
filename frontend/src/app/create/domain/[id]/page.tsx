@@ -1370,7 +1370,7 @@ export default function DomainWizardPage({ params }: { params: Promise<{ id: str
   const domainLabel = DOMAIN_LABELS[domain];
 
   return (
-    <div className="min-h-screen gradient-page">
+    <div className="min-h-[calc(100vh-4rem)]">
       {/* Floating bg decorations */}
       {["✨", "🌟", "📖", "🎨", "⭐"].map((e, i) => (
         <motion.span
@@ -1442,7 +1442,7 @@ export default function DomainWizardPage({ params }: { params: Promise<{ id: str
 
       {/* Navigation footer */}
       {!wizard.isSummary && (
-        <div className="fixed bottom-0 left-0 right-0 z-20 glass border-t border-border/40 px-4 py-4">
+        <div className="fixed bottom-0 left-0 right-0 lg:left-16 z-20 glass border-t border-border/40 px-4 py-4">
           <div className="max-w-xl mx-auto flex items-center justify-between gap-4">
             <SproutButton
               variant="ghost" size="md"

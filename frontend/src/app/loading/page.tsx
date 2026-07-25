@@ -7,6 +7,7 @@ import { CheckCircle2, AlertCircle } from "lucide-react";
 import type { StoryResponse } from "@/lib/auth-types";
 import { STORY_SESSION_KEY, STORY_PAYLOAD_SESSION_KEY } from "@/lib/auth-types";
 import { useAuth } from "@/hooks/use-auth";
+import { AppShell } from "@/components/layout/app-shell";
 
 
 const FASTAPI_URL = process.env.NEXT_PUBLIC_FASTAPI_URL ?? "http://localhost:8000";
@@ -252,7 +253,8 @@ export default function LoadingPage() {
   const hasError  = error !== null;
 
   return (
-    <div className="min-h-screen gradient-page flex flex-col items-center justify-center p-6 relative overflow-hidden">
+    <AppShell showFooter={false}>
+    <div className="flex flex-col items-center justify-center p-6 relative overflow-hidden min-h-[calc(100vh-4rem)]">
       {/* Magic particles */}
       {magicParticles.map((p) => (
         <motion.span
@@ -396,5 +398,6 @@ export default function LoadingPage() {
         )}
       </div>
     </div>
+    </AppShell>
   );
 }

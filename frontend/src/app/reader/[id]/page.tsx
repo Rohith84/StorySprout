@@ -14,6 +14,7 @@ import { SproutBadge } from "@/components/ui/sprout-misc";
 import type { StoryResponse } from "@/lib/auth-types";
 import { STORY_SESSION_KEY, PHOTO_SESSION_KEY, CREATOR_NAME_SESSION_KEY } from "@/lib/auth-types";
 import { GRADIENTS, ILLUSTRATIONS } from "@/lib/story-constants";
+import { AppShell } from "@/components/layout/app-shell";
 
 const FASTAPI_URL = process.env.NEXT_PUBLIC_FASTAPI_URL ?? "http://localhost:8000";
 
@@ -1037,8 +1038,9 @@ export default function ReaderPage() {
     : "radial-gradient(ellipse at 50% 30%, #E8DCC8 0%, #D4C4A0 100%)";
 
   return (
+    <AppShell showFooter={false}>
     <div
-      className="min-h-screen flex flex-col transition-colors duration-300"
+      className="flex flex-col transition-colors duration-300"
       style={{ background: outerBg }}
     >
       {/* ── Toolbar ── */}
@@ -1243,5 +1245,6 @@ export default function ReaderPage() {
         )}
       </div>
     </div>
+    </AppShell>
   );
 }

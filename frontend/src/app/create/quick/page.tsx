@@ -450,7 +450,7 @@ export default function QuickCreatePage() {
   /* intro screen */
   if (step === 0) {
     return (
-      <div className="min-h-screen gradient-page flex items-center justify-center p-6">
+      <div className="flex items-center justify-center p-6 min-h-[calc(100vh-4rem)]">
         {["🪄", "✨", "⭐", "📖"].map((e, i) => (
           <motion.span key={i} className="fixed text-3xl opacity-40 dark:opacity-50 pointer-events-none"
             style={{ left: `${10 + i * 22}%`, top: `${12 + (i % 2) * 60}%` }}
@@ -492,7 +492,7 @@ export default function QuickCreatePage() {
 
   /* wizard steps */
   return (
-    <div className="min-h-screen gradient-page">
+    <div className="min-h-[calc(100vh-4rem)]">
       {["✨", "🌟", "🪄", "⭐"].map((e, i) => (
         <motion.span key={i} className="fixed text-2xl opacity-40 dark:opacity-50 pointer-events-none select-none"
           style={{ left: `${6 + i * 22}%`, top: `${8 + (i % 2) * 56}%` }}
@@ -536,7 +536,7 @@ export default function QuickCreatePage() {
       </div>
 
       {/* fixed bottom nav */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 glass border-t border-border/40 px-4 py-4">
+      <div className="fixed bottom-0 left-0 right-0 lg:left-16 z-40 glass border-t border-border/40 px-4 py-4">
         <div className="max-w-xl mx-auto flex items-center gap-3">
           <SproutButton variant="glass" size="lg" className="flex-1" onClick={back} leftIcon={<ChevronLeft size={18} />}>
             Back

@@ -3,7 +3,7 @@
 import * as React from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { ArrowRight, Wand2, BookOpen, Globe2, ChevronLeft } from "lucide-react";
+import { ArrowRight, Wand2, BookOpen, Globe2 } from "lucide-react";
 import { SproutBadge } from "@/components/ui/sprout-misc";
 
 const MODES = [
@@ -55,7 +55,7 @@ export default function CreatePage() {
   const [selected, setSelected] = React.useState<string | null>(null);
 
   return (
-    <div className="min-h-screen gradient-page flex flex-col items-center justify-center p-6 relative overflow-hidden">
+    <div className="flex flex-col items-center justify-center p-6 relative overflow-hidden min-h-[calc(100vh-4rem)]">
       {/* Background particles */}
       {["✨", "⭐", "📖", "🌟", "🎨", "🦋"].map((e, i) => (
         <motion.span
@@ -69,17 +69,6 @@ export default function CreatePage() {
           {e}
         </motion.span>
       ))}
-
-      {/* Back to home */}
-      <div className="fixed top-4 left-4 z-20">
-        <Link
-          href="/"
-          className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-body font-medium text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-all"
-        >
-          <ChevronLeft size={16} />
-          Home
-        </Link>
-      </div>
 
       <div className="w-full max-w-3xl relative z-10 space-y-10">
         {/* Header */}
