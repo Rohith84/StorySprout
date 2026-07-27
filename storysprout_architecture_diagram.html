@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>StorySprout Architecture & AI Model Specification</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      background: #0B0F19;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-family: system-ui, -apple-system, sans-serif;
+    }
+    .download-bar {
+      margin-bottom: 20px;
+      display: flex;
+      gap: 12px;
+    }
+    .btn {
+      background: linear-gradient(135deg, #00F2FE 0%, #4FACFE 100%);
+      color: #0B0F19;
+      font-weight: 700;
+      padding: 10px 20px;
+      border-radius: 8px;
+      text-decoration: none;
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+      transition: transform 0.2s ease;
+    }
+    .btn:hover {
+      transform: scale(1.05);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="download-bar">
+    <button class="btn" onclick="window.print()">🖨️ Print / Save as PDF</button>
+  </div>
+
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 780" width="1000" height="780" style="background:#0B0F19; border-radius:16px; font-family:system-ui, -apple-system, sans-serif;">
+    <defs>
+      <filter id="glow-cyan" x="-20%" y="-20%" width="140%" height="140%">
+        <feGaussianBlur stdDeviation="6" result="blur" />
+        <feComposite in="SourceGraphic" in2="blur" operator="over" />
+      </filter>
+      <filter id="glow-gold" x="-20%" y="-20%" width="140%" height="140%">
+        <feGaussianBlur stdDeviation="6" result="blur" />
+        <feComposite in="SourceGraphic" in2="blur" operator="over" />
+      </filter>
+      <linearGradient id="header-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+        <stop offset="0%" stop-color="#00F2FE" />
+        <stop offset="50%" stop-color="#4FACFE" />
+        <stop offset="100%" stop-color="#00E676" />
+      </linearGradient>
+      <linearGradient id="card-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#1E293B" stop-opacity="0.9" />
+        <stop offset="100%" stop-color="#0F172A" stop-opacity="0.9" />
+      </linearGradient>
+      <linearGradient id="badge-ibm" x1="0%" y1="0%" x2="100%" y2="0%">
+        <stop offset="0%" stop-color="#3B82F6" />
+        <stop offset="100%" stop-color="#1D4ED8" />
+      </linearGradient>
+      <linearGradient id="badge-flux" x1="0%" y1="0%" x2="100%" y2="0%">
+        <stop offset="0%" stop-color="#EC4899" />
+        <stop offset="100%" stop-color="#8B5CF6" />
+      </linearGradient>
+      <linearGradient id="badge-db" x1="0%" y1="0%" x2="100%" y2="0%">
+        <stop offset="0%" stop-color="#10B981" />
+        <stop offset="100%" stop-color="#059669" />
+      </linearGradient>
+    </defs>
+
+    <style>
+      @keyframes pulse {
+        0% { opacity: 0.4; transform: scale(1); }
+        50% { opacity: 0.9; transform: scale(1.02); }
+        100% { opacity: 0.4; transform: scale(1); }
+      }
+      @keyframes dash {
+        to { stroke-dashoffset: -40; }
+      }
+      .flow-line { stroke: #00F2FE; stroke-dasharray: 8 6; animation: dash 1.5s linear infinite; }
+      .flow-line-gold { stroke: #F59E0B; stroke-dasharray: 8 6; animation: dash 1.8s linear infinite; }
+      .node-box { transition: all 0.3s ease; }
+      .node-box:hover { filter: drop-shadow(0 0 12px #00F2FE); }
+    </style>
+
+    <text x="500" y="42" text-anchor="middle" fill="url(#header-grad)" font-size="24" font-weight="800" letter-spacing="1">StorySprout Architecture &amp; AI Model Map</text>
+    <text x="500" y="66" text-anchor="middle" fill="#94A3B8" font-size="13">Intergenerational Knowledge Transfer Through AI Storytelling — Turned Into a Book for Every Child</text>
+    <text x="500" y="86" text-anchor="middle" fill="#F59E0B" font-size="12" font-style="italic">"Sowing Yesterday's Wisdom, Growing Tomorrow's Minds."</text>
+
+    <!-- 1. Input Box -->
+    <g class="node-box" transform="translate(40, 120)">
+      <rect width="260" height="75" rx="12" fill="url(#card-grad)" stroke="#38BDF8" stroke-width="2"/>
+      <text x="130" y="30" text-anchor="middle" fill="#38BDF8" font-size="15" font-weight="700">👵 Parents &amp; Grandparents</text>
+      <text x="130" y="52" text-anchor="middle" fill="#CBD5E1" font-size="12">Family Memory &amp; Cultural Heritage</text>
+    </g>
+
+    <!-- Flow Line 1 -> 2 -->
+    <path d="M 300 157 L 370 157" stroke="#38BDF8" stroke-width="2.5" class="flow-line"/>
+
+    <!-- 2. Gateway Box -->
+    <g class="node-box" transform="translate(370, 120)">
+      <rect width="260" height="75" rx="12" fill="url(#card-grad)" stroke="#818CF8" stroke-width="2"/>
+      <text x="130" y="30" text-anchor="middle" fill="#818CF8" font-size="15" font-weight="700">⚡ FastAPI Backend Gateway</text>
+      <text x="130" y="52" text-anchor="middle" fill="#CBD5E1" font-size="12">POST /generate-story &amp; CORS</text>
+    </g>
+
+    <!-- Flow Line 2 -> 3 -->
+    <path d="M 630 157 L 700 157" stroke="#818CF8" stroke-width="2.5" class="flow-line"/>
+
+    <!-- 3. Root Orchestrator Box -->
+    <g class="node-box" transform="translate(700, 120)">
+      <rect width="260" height="75" rx="12" fill="url(#card-grad)" stroke="#F59E0B" stroke-width="2.5" filter="url(#glow-gold)"/>
+      <text x="130" y="28" text-anchor="middle" fill="#F59E0B" font-size="16" font-weight="800">👑 Root Orchestrator Agent</text>
+      <text x="130" y="50" text-anchor="middle" fill="#FCD34D" font-size="12">orchestrator.py (ThreadPoolExecutor)</text>
+    </g>
+
+    <!-- Flow Lines to Sub-Agents -->
+    <path d="M 830 195 L 830 250 L 170 250 L 170 290" stroke="#F59E0B" stroke-width="2" class="flow-line-gold"/>
+    <path d="M 830 195 L 830 250 L 500 250 L 500 290" stroke="#F59E0B" stroke-width="2" class="flow-line-gold"/>
+    <path d="M 830 195 L 830 290" stroke="#F59E0B" stroke-width="2" class="flow-line-gold"/>
+
+    <rect x="40" y="260" width="920" height="24" rx="6" fill="#1E293B" opacity="0.6"/>
+    <text x="500" y="277" text-anchor="middle" fill="#FCD34D" font-size="13" font-weight="700">🤖 SPECIALIZED AI SUB-AGENTS (MODEL: ibm/granite-4-h-small)</text>
+
+    <g class="node-box" transform="translate(40, 300)">
+      <rect width="280" height="110" rx="12" fill="url(#card-grad)" stroke="#EF4444" stroke-width="2"/>
+      <text x="140" y="28" text-anchor="middle" fill="#FCA5A5" font-size="14" font-weight="700">🛡️ Safety Agent</text>
+      <text x="140" y="48" text-anchor="middle" fill="#94A3B8" font-size="11">safety_agent.py</text>
+      <rect x="25" y="60" width="230" height="20" rx="10" fill="url(#badge-ibm)"/>
+      <text x="140" y="74" text-anchor="middle" fill="#FFFFFF" font-size="11" font-weight="700">Model: ibm/granite-4-h-small</text>
+      <text x="140" y="96" text-anchor="middle" fill="#CBD5E1" font-size="11">Sanitizes input &amp; page safety audit</text>
+    </g>
+
+    <g class="node-box" transform="translate(360, 300)">
+      <rect width="280" height="110" rx="12" fill="url(#card-grad)" stroke="#3B82F6" stroke-width="2"/>
+      <text x="140" y="28" text-anchor="middle" fill="#93C5FD" font-size="14" font-weight="700">✍️ Master Storyteller Agent</text>
+      <text x="140" y="48" text-anchor="middle" fill="#94A3B8" font-size="11">narrative_agent.py</text>
+      <rect x="25" y="60" width="230" height="20" rx="10" fill="url(#badge-ibm)"/>
+      <text x="140" y="74" text-anchor="middle" fill="#FFFFFF" font-size="11" font-weight="700">Model: ibm/granite-4-h-small</text>
+      <text x="140" y="96" text-anchor="middle" fill="#CBD5E1" font-size="11">Generates narrative pages &amp; title</text>
+    </g>
+
+    <g class="node-box" transform="translate(680, 300)">
+      <rect width="280" height="110" rx="12" fill="url(#card-grad)" stroke="#10B981" stroke-width="2"/>
+      <text x="140" y="28" text-anchor="middle" fill="#6EE7B7" font-size="14" font-weight="700">🔍 Fact Check Agent</text>
+      <text x="140" y="48" text-anchor="middle" fill="#94A3B8" font-size="11">fact_check_agent.py</text>
+      <rect x="25" y="60" width="230" height="20" rx="10" fill="url(#badge-ibm)"/>
+      <text x="140" y="74" text-anchor="middle" fill="#FFFFFF" font-size="11" font-weight="700">Model: ibm/granite-4-h-small</text>
+      <text x="140" y="96" text-anchor="middle" fill="#CBD5E1" font-size="11">Validates cultural &amp; historical facts</text>
+    </g>
+
+    <g class="node-box" transform="translate(40, 430)">
+      <rect width="280" height="110" rx="12" fill="url(#card-grad)" stroke="#8B5CF6" stroke-width="2"/>
+      <text x="140" y="28" text-anchor="middle" fill="#C4B5FD" font-size="14" font-weight="700">📖 Pedagogy Agent</text>
+      <text x="140" y="48" text-anchor="middle" fill="#94A3B8" font-size="11">pedagogy_agent.py</text>
+      <rect x="25" y="60" width="230" height="20" rx="10" fill="url(#badge-ibm)"/>
+      <text x="140" y="74" text-anchor="middle" fill="#FFFFFF" font-size="11" font-weight="700">Model: ibm/granite-4-h-small</text>
+      <text x="140" y="96" text-anchor="middle" fill="#CBD5E1" font-size="11">Extracts 4 vocab words &amp; meanings</text>
+    </g>
+
+    <g class="node-box" transform="translate(360, 430)">
+      <rect width="280" height="110" rx="12" fill="url(#card-grad)" stroke="#F59E0B" stroke-width="2"/>
+      <text x="140" y="28" text-anchor="middle" fill="#FCD34D" font-size="14" font-weight="700">🧩 Quiz Agent</text>
+      <text x="140" y="48" text-anchor="middle" fill="#94A3B8" font-size="11">quiz_agent.py</text>
+      <rect x="25" y="60" width="230" height="20" rx="10" fill="url(#badge-ibm)"/>
+      <text x="140" y="74" text-anchor="middle" fill="#FFFFFF" font-size="11" font-weight="700">Model: ibm/granite-4-h-small</text>
+      <text x="140" y="96" text-anchor="middle" fill="#CBD5E1" font-size="11">Builds 3 comprehension MCQs</text>
+    </g>
+
+    <g class="node-box" transform="translate(680, 430)">
+      <rect width="280" height="110" rx="12" fill="url(#card-grad)" stroke="#EC4899" stroke-width="2"/>
+      <text x="140" y="28" text-anchor="middle" fill="#FBCFE8" font-size="14" font-weight="700">🎨 Visual Director Agent</text>
+      <text x="140" y="48" text-anchor="middle" fill="#94A3B8" font-size="11">visual_agent.py</text>
+      <rect x="25" y="60" width="230" height="20" rx="10" fill="url(#badge-ibm)"/>
+      <text x="140" y="74" text-anchor="middle" fill="#FFFFFF" font-size="11" font-weight="700">Model: ibm/granite-4-h-small</text>
+      <text x="140" y="96" text-anchor="middle" fill="#CBD5E1" font-size="11">Crafts scene prompt &amp; hero sheet</text>
+    </g>
+
+    <path d="M 500 540 L 500 590" stroke="#00F2FE" stroke-width="2.5" class="flow-line"/>
+
+    <rect x="40" y="565" width="920" height="24" rx="6" fill="#1E293B" opacity="0.6"/>
+    <text x="500" y="582" text-anchor="middle" fill="#38BDF8" font-size="13" font-weight="700">⚙️ EXECUTION ENGINES, PERSISTENCE &amp; OUTPUT DELIVERABLES</text>
+
+    <g class="node-box" transform="translate(40, 600)">
+      <rect width="280" height="120" rx="12" fill="url(#card-grad)" stroke="#EC4899" stroke-width="2"/>
+      <text x="140" y="28" text-anchor="middle" fill="#FBCFE8" font-size="14" font-weight="700">🖼️ Image Gen Engine</text>
+      <text x="140" y="48" text-anchor="middle" fill="#94A3B8" font-size="11">services/image_gen.py</text>
+      <rect x="25" y="60" width="230" height="20" rx="10" fill="url(#badge-flux)"/>
+      <text x="140" y="74" text-anchor="middle" fill="#FFFFFF" font-size="11" font-weight="700">Engine: Pollinations.ai (FLUX Model)</text>
+      <text x="140" y="98" text-anchor="middle" fill="#CBD5E1" font-size="11">Renders story illustrations</text>
+    </g>
+
+    <g class="node-box" transform="translate(360, 600)">
+      <rect width="280" height="120" rx="12" fill="url(#card-grad)" stroke="#38BDF8" stroke-width="2"/>
+      <text x="140" y="28" text-anchor="middle" fill="#BAE6FD" font-size="14" font-weight="700">📄 Printable PDF Book</text>
+      <text x="140" y="48" text-anchor="middle" fill="#94A3B8" font-size="11">story-pdf-document.tsx</text>
+      <rect x="25" y="60" width="230" height="20" rx="10" fill="url(#badge-ibm)"/>
+      <text x="140" y="74" text-anchor="middle" fill="#FFFFFF" font-size="11" font-weight="700">Engine: @react-pdf/renderer</text>
+      <text x="140" y="98" text-anchor="middle" fill="#CBD5E1" font-size="11">Exportable child storybook</text>
+    </g>
+
+    <g class="node-box" transform="translate(680, 600)">
+      <rect width="280" height="120" rx="12" fill="url(#card-grad)" stroke="#10B981" stroke-width="2"/>
+      <text x="140" y="28" text-anchor="middle" fill="#6EE7B7" font-size="14" font-weight="700">🍃 MongoDB Atlas Library</text>
+      <text x="140" y="48" text-anchor="middle" fill="#94A3B8" font-size="11">services/database.py</text>
+      <rect x="25" y="60" width="230" height="20" rx="10" fill="url(#badge-db)"/>
+      <text x="140" y="74" text-anchor="middle" fill="#FFFFFF" font-size="11" font-weight="700">Database: MongoDB Atlas v7.0</text>
+      <text x="140" y="98" text-anchor="middle" fill="#CBD5E1" font-size="11">User preferences &amp; story persistence</text>
+    </g>
+  </svg>
+
+</body>
+</html>
