@@ -50,16 +50,6 @@ function Sidebar({ items = defaultNavItems, collapsible = true, className }: Sid
         className
       )}
     >
-      {/* Logo */}
-      <div className="flex items-center gap-3 px-4 py-5 border-b border-border/30">
-        <span className="text-2xl shrink-0 animate-wiggle">🌱</span>
-        <AnimatedText show={!collapsed}>
-          <span className="font-heading font-bold text-lg text-foreground whitespace-nowrap">
-            StorySprout
-          </span>
-        </AnimatedText>
-      </div>
-
       {/* Nav */}
       <nav className="flex-1 py-4 space-y-1 px-2" aria-label="Main navigation">
         {items.map((item) => {
@@ -222,10 +212,6 @@ function MobileDrawer({ open, onClose, items = defaultNavItems }: MobileDrawerPr
       >
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-5 border-b border-border/30">
-          <div className="flex items-center gap-2">
-            <span className="text-2xl">🌱</span>
-            <span className="font-heading font-bold text-lg">StorySprout</span>
-          </div>
           <button
             onClick={onClose}
             className="p-1.5 rounded-full hover:bg-muted/60 text-muted-foreground hover:text-foreground transition-colors"

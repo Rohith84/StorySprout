@@ -109,7 +109,7 @@ function HeroSection() {
                   className="text-7xl md:text-8xl absolute top-0 left-1/2 -translate-x-1/2 -translate-y-4 filter drop-shadow-lg"
                   style={{ textShadow: "0 0 30px #B9FBC080, 0 0 60px #6CC6FF40" }}
                 >
-                  🌳
+                  🌿
                 </motion.div>
                 {/* Animals reading */}
                 <motion.div animate={{ y: [0, -6, 0] }} transition={{ duration: 3, repeat: Infinity, delay: 0 }} className="text-4xl md:text-5xl mt-16">🐻</motion.div>
