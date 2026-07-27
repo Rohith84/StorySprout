@@ -110,30 +110,33 @@ function Pill({
 
 type VoiceStatus = "idle" | "listening" | "unsupported" | "denied" | "error";
 
+/* Ambient type declarations for Web Speech API to satisfy TypeScript */
+interface IWindowWithSpeech extends Window {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  SpeechRecognition?: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  webkitSpeechRecognition?: any;
+}
+
 function useVoiceInput(onResult: (text: string) => void) {
   const [status, setStatus] = React.useState<VoiceStatus>("idle");
-  const recognitionRef = React.useRef<InstanceType<typeof window.SpeechRecognition> | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const recognitionRef = React.useRef<any>(null);
 
   // Detect support once on mount (client-only)
   const supported = React.useMemo(() => {
     if (typeof window === "undefined") return false;
-    return !!(
-      (window as Window & { SpeechRecognition?: unknown; webkitSpeechRecognition?: unknown })
-        .SpeechRecognition ||
-      (window as Window & { SpeechRecognition?: unknown; webkitSpeechRecognition?: unknown })
-        .webkitSpeechRecognition
-    );
+    const win = window as IWindowWithSpeech;
+    return !!(win.SpeechRecognition || win.webkitSpeechRecognition);
   }, []);
 
   const start = React.useCallback(() => {
     if (!supported) { setStatus("unsupported"); return; }
     if (status === "listening") return;
 
-    const SR: typeof window.SpeechRecognition =
-      (window as Window & { SpeechRecognition?: typeof window.SpeechRecognition; webkitSpeechRecognition?: typeof window.SpeechRecognition })
-        .SpeechRecognition ??
-      (window as Window & { SpeechRecognition?: typeof window.SpeechRecognition; webkitSpeechRecognition?: typeof window.SpeechRecognition })
-        .webkitSpeechRecognition!;
+    const win = window as IWindowWithSpeech;
+    const SR = win.SpeechRecognition || win.webkitSpeechRecognition;
+    if (!SR) { setStatus("unsupported"); return; }
 
     const rec = new SR();
     rec.lang = "en-US";
@@ -142,13 +145,15 @@ function useVoiceInput(onResult: (text: string) => void) {
 
     rec.onstart = () => setStatus("listening");
 
-    rec.onresult = (e: SpeechRecognitionEvent) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    rec.onresult = (e: any) => {
       const transcript = e.results[0]?.[0]?.transcript ?? "";
       onResult(transcript.trim());
       setStatus("idle");
     };
 
-    rec.onerror = (e: SpeechRecognitionErrorEvent) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    rec.onerror = (e: any) => {
       if (e.error === "not-allowed" || e.error === "service-not-allowed") {
         setStatus("denied");
       } else {
@@ -158,6 +163,7 @@ function useVoiceInput(onResult: (text: string) => void) {
 
     rec.onend = () => {
       // If we're still "listening" after end without a result, go back to idle
+
       setStatus((prev) => (prev === "listening" ? "idle" : prev));
     };
 
