@@ -107,9 +107,13 @@ function HeroSection() {
                   animate={{ scale: [1, 1.03, 1] }}
                   transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
                   className="text-7xl md:text-8xl absolute top-0 left-1/2 -translate-x-1/2 -translate-y-4 filter drop-shadow-lg"
-                  style={{ textShadow: "0 0 30px #B9FBC080, 0 0 60px #6CC6FF40" }}
+                  style={{
+                    textShadow: "0 0 30px #B9FBC080, 0 0 60px #6CC6FF40",
+                    WebkitMaskImage: "linear-gradient(to bottom, black 0%, black 78%, transparent 100%)",
+                    maskImage: "linear-gradient(to bottom, black 0%, black 78%, transparent 100%)",
+                  }}
                 >
-                  🌿
+                  🌳
                 </motion.div>
                 {/* Animals reading */}
                 <motion.div animate={{ y: [0, -6, 0] }} transition={{ duration: 3, repeat: Infinity, delay: 0 }} className="text-4xl md:text-5xl mt-16">🐻</motion.div>
