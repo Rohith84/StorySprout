@@ -4,6 +4,7 @@
 
 [![IBM Granite](https://img.shields.io/badge/AI_Engine-IBM_Granite_4-blue.svg)](https://www.ibm.com/granite)
 [![Architecture](https://img.shields.io/badge/Architecture-Multi--Agent_Pipeline-emerald.svg)](#-the-six-agent-ai-pipeline-ibm-granite--watsonx)
+[![Authentication](https://img.shields.io/badge/Auth-Gmail_Google_OAuth-red.svg)](#-secure-gmail-authentication--user-safety)
 [![Framework](https://img.shields.io/badge/Frontend-Next.js_16-black.svg)](https://nextjs.org/)
 [![Backend](https://img.shields.io/badge/Backend-FastAPI-009688.svg)](https://fastapi.tiangolo.com/)
 [![Database](https://img.shields.io/badge/Database-MongoDB_Atlas-green.svg)](https://www.mongodb.com/atlas)
@@ -15,13 +16,13 @@
 
 ---
 
-## 📖 StorySprout Submission Overview
+## 📖 StorySprout Project Overview
 
-> *A grandmother in Chennai has a memory — the day she cooked **Pongal for the first time** as a newlywed. She wants her 6-year-old grandson in London to know that story, feel that warmth, and understand why it matters. But she can't write a children's book.*
+> *A father and grandfather share a joyful family memory — building a stargazing wooden treehouse during a crisp summer night, watching the constellations together. They want their 6-year-old child to feel that exact same wonder, warmth, and sense of curiosity. But neither of them is a professional children's book author.*
 >
-> *A biology teacher knows that children remember **how the heart pumps blood** far better when it's told as a story about a brave little red cell on a journey — not from a diagram in a textbook.*
+> *A science teacher knows that children remember **how the heart pumps blood** far better when it's told as an adventure story about a brave little red blood cell on a journey — not from a static textbook diagram.*
 >
-> **StorySprout turns both of these into a personalised, illustrated storybook — in the child's language, at the child's reading level — in under 60 seconds. The knowledge travels. The child learns. The story lives on.**
+> **StorySprout turns both of these into a personalized, illustrated storybook — in the child's native language, at the child's exact reading level, secured via Gmail Authentication — in under 60 seconds. The knowledge travels. The child learns. The memory lives on.**
 
 ---
 
@@ -29,37 +30,50 @@
 
 | ❌ The Issue | ✨ Our Magic Solution |
 | :--- | :--- |
-| **Knowledge dies with the generation holding it.** Every generation carries knowledge the next one is losing — a grandmother's recipe, a teacher's anatomy metaphor, a cultural festival that only elders truly understand, an unwritten family history. | **StorySprout is an AI platform built on IBM Granite (WatsonX)** that transforms any piece of human knowledge — a family memory, a cultural tradition, a historical event, or a classroom lesson — into a personalized, illustrated, educationally layered children's storybook in seconds. |
+| **Knowledge dies with the generation holding it.** Every generation carries knowledge the next one is losing — a happy family tradition, a teacher's science metaphor, a cultural festival that only elders truly understand, or an unwritten family milestone. | **StorySprout is an AI platform built on IBM Granite (WatsonX)** that transforms any piece of human knowledge — a happy family memory, a cultural tradition, a historical event, or a classroom lesson — into a personalized, illustrated, educationally layered children's storybook in seconds. |
 | Existing tools are either generic AI writing assistants with no educational structure, or complex creative platforms requiring writing and illustration skills most people don't have. | Powered by a **Six-Agent AI Pipeline**: a `SafetyAgent` guards child safety, a `NarrativeAgent` writes age-calibrated stories natively in the child's language, a `FactCheckAgent` verifies cultural & historical truth, and `PedagogyAgent`, `QuizAgent`, & `VisualAgent` run in parallel to generate vocabulary cards, quizzes, and illustrations. |
+| **Lack of parental controls & identity safety.** Unauthenticated public creation tools allow unauthorized access, data loss, and unmonitored AI usage for children. | **Built-in Gmail (Google OAuth) Authentication** secures user identity, protects family story privacy, attributes story ownership, and ensures safety control before accessing story creation. |
 
 ---
 
-## 👵 Who Uses StorySprout & How Knowledge Travels
+## 👨‍👩‍👧‍👦 Who Uses StorySprout: Multi-User Personas & Knowledge Transfer
+
+StorySprout is designed for anyone who holds knowledge or memories and wants to pass them to children:
 
 ```
-┌───────────────────────────┐      ┌───────────────────────────┐      ┌───────────────────────────┐
-│     👵 THE GRANDPARENT    │      │       🧬 THE TEACHER      │      │       🌍 THE PARENT       │
-│                           │      │                           │      │                           │
-│ "I want my grandson to    │      │ "I want my Year 4 class to│      │ "My child was born here   │
-│ know about the Pongal we  │      │ understand how the        │      │ but I want them to        │
-│ cooked the first year the │      │ circulatory system works  │      │ understand the Partition  │
-│ harvest failed."          │      │ using a red cell hero."   │      │ of India with empathy."   │
-└─────────────┬─────────────┘      └─────────────┬─────────────┘      └─────────────┬─────────────┘
-              │                                  │                                  │
-              ▼                                  ▼                                  ▼
- 🌾 Family Memory Story             🔬 Educational Custom Story            📜 Historical Domain Story
- • Tamil native language            • Red Blood Cell Hero                  • Child's point of view
- • Age-calibrated for 6-year-old    • Vocab: "artery", "oxygen"            • FactCheckAgent verified
- • Vocab: "harvest", "gratitude"    • Comprehension quiz at end            • Lived experience history
+┌───────────────────────────┐      ┌───────────────────────────┐      ┌───────────────────────────┐      ┌───────────────────────────┐
+│       👨‍👩‍👧 THE PARENT       │      │     👵 THE GRANDPARENT    │      │       🧬 THE TEACHER      │      │     🌍 MENTORS & GUARDIANS │
+│                           │      │                           │      │                           │      │                           │
+│ "I want my daughter to    │      │ "I want my grandchild to  │      │ "I want my Year 4 class to│      │ "I want young kids to     │
+│ remember our family       │      │ know the happy stories of │      │ understand how the        │      │ understand traditional    │
+│ stargazing camping trip." │      │ our ancestral festival."  │      │ circulatory system works."│      │ heritage with empathy."   │
+└─────────────┬─────────────┘      └─────────────┬─────────────┘      └─────────────┬─────────────┘      └─────────────┬─────────────┘
+              │                                  │                                  │                                  │
+              ▼                                  ▼                                  ▼                                  ▼
+ 🏕️ Happy Family Memory             🌾 Heritage & Tradition                🔬 Educational Custom Story            📜 Historical & Cultural
+ • Personalized family story        • Native language option               • Red Blood Cell Hero                  • Child's point of view
+ • Age-calibrated (6-8 yrs)         • Age-calibrated (3-5 yrs)             • Vocab: "artery", "oxygen"            • FactCheckAgent verified
+ • Vocab: "constellation"           • Vocab: "harmony", "gratitude"        • Comprehension quiz at end            • Lived experience history
 ```
 
 ### 🔄 How Knowledge Travels — From Holder to Child
 
 ```
-[👵 Knowledge Holder] ──► [📋 Domain Wizard] ──► [🤖 6-Agent Pipeline] ──► [📖 Child Reads & Learns] ──► [🌱 Knowledge Planted]
- (Grandparent, Teacher   (Guided questions       (IBM Granite writes,       (Flipbook, audio, vocab,     (Memory & lesson
-  or Parent)              capture memory/lesson)  fact-checks, illustrates)  quizzes & PDF book)         understood forever)
+[🔐 Gmail Auth Login] ──► [👨‍👩‍👧‍👦 Knowledge Holder] ──► [📋 Domain Wizard] ──► [🤖 6-Agent Pipeline] ──► [📖 Child Reads & Learns] ──► [🌱 Knowledge Planted]
+(Secures profile &        (Parents, Teachers,       (Guided questions       (IBM Granite writes,       (Flipbook, audio, vocab,     (Memory & lesson
+ user story privacy)       Grandparents, Mentors)    capture memory/lesson)  fact-checks, illustrates)  quizzes & PDF book)         understood forever)
 ```
+
+---
+
+## 🔒 Secure Gmail Authentication & User Safety
+
+StorySprout incorporates **Gmail Authentication (Google OAuth 2.0)** to provide a multi-layered security and personalization framework:
+
+* **Identity Verification & Access Control**: Ensures only authenticated parents, teachers, and guardians can create, edit, or publish stories.
+* **Privacy & Family Vault**: Stores generated stories safely under the user's verified Gmail account profile in MongoDB Atlas.
+* **Parental Safety & Audit Traceability**: Combines Gmail auth credentials with our AI `SafetyAgent` to prevent unauthorized generation of unsafe content and track audit logs.
+* **Seamless One-Click Login**: Enables instant access across devices without cumbersome password management.
 
 ---
 
@@ -73,14 +87,14 @@ graph TD
     A --> C[🌍 Cultural & Heritage]
     A --> D[📜 Historical]
 
-    B --> B1["Personal & Emotional<br/>Grandparent memories, family events, childhood stories."]
-    C --> C1["Roots & Identity<br/>Traditions, festivals, folk tales, food meanings."]
+    B --> B1["Personal & Emotional<br/>Happy family moments, camping trips, childhood milestones."]
+    C --> C1["Roots & Identity<br/>Traditions, festivals, folk tales, food origins."]
     D --> D1["History as Lived Experience<br/>Historical eras, events, real figures from a child's POV."]
 ```
 
-1. 👨‍👩‍👧 **Family Memory**: Captures personal stories, family events, and childhood memories. *(Preserves personal history — not fact-checked as memories are personal).*
+1. 👨‍👩‍👧 **Family Memory**: Captures personal stories, happy family moments, and childhood milestones. *(Preserves family history — tailored to your loved ones).*
 2. 🌍 **Cultural & Heritage**: Passes on traditions, festivals, food origins, folk tales, and family values. *(Verified by `FactCheckAgent` for cultural authenticity).*
-3. 📜 **Historical**: Brings real historical eras, events, and real figures to life through the eyes of a child living then. *(Verified by `FactCheckAgent` for historical accuracy).*
+3. 📜 **Historical**: Brings real historical eras, events, and figures to life through the eyes of a child living then. *(Verified by `FactCheckAgent` for historical accuracy).*
 
 ---
 
@@ -90,7 +104,7 @@ All story generation is orchestrated by the **`RootOrchestratorAgent`** ([backen
 
 ```mermaid
 flowchart TD
-    User["👤 User / React Wizard UI"] -->|"StoryRequest JSON"| Gateway["⚡ FastAPI Backend Gateway (/generate-story)"]
+    User["👤 User (Authenticated via Gmail Auth)"] -->|"Verified Bearer Token / Session"| Gateway["⚡ FastAPI Backend Gateway (/generate-story)"]
     Gateway --> Orchestrator["👑 Root Orchestrator Agent"]
 
     subgraph SequentialAgents["Core Sequential Sub-Agents"]
@@ -114,7 +128,7 @@ flowchart TD
 
     FinalJSON --> ImageGen["🖼️ Image Gen Engine (Pollinations.ai / FLUX Model)"]
     FinalJSON --> PDFBook["📄 Printable PDF Book Exporter (@react-pdf/renderer)"]
-    FinalJSON --> Mongo["🍃 MongoDB Database (Atlas / PyMongo)"]
+    FinalJSON --> Mongo["🍃 MongoDB Database (Atlas / User Vault)"]
 ```
 
 | Agent Name | File Location | What It Does | Educational Role | Execution Phase |
@@ -128,18 +142,19 @@ flowchart TD
 
 ---
 
-## 📊 Market Comparison — What the Market Has vs. What StorySprout Built
+## 📊 Existing Solutions vs. StorySprout Proposed Capabilities
 
-| Capability | Market Today (Book Creator, Canva, ChatGPT) | The Gap | StorySprout |
+| Feature / Capability | Existing Traditional Tools (Book Creator, Canva, ChatGPT) | Unmet Needs | StorySprout Proposed Solution |
 | :--- | :--- | :--- | :--- |
-| **Generational knowledge input** | ❌ No concept of family memory or cultural heritage as input | A grandmother cannot feed her own story into any existing tool | **✓ Domain Mode** — Family Memory, Cultural Heritage, Historical guided wizards with zero writing skill required. |
-| **Education through story** | ❌ No structured subject-to-story mapping | A teacher can't turn a science lesson into a personalized story with a quiz | **✓ Custom Build Mode** — Configurable hero, incident, lesson, moral + auto-generated quiz & vocabulary per story. |
-| **Age-calibrated output** | ⚠️ Partial — Generic text, no age structure | A story for a 4-year-old reads the same as one for a 12-year-old | **✓ NarrativeAgent** calibrates vocabulary, sentence length, & page count by age (`3-5`, `6-8`, `9-12`). |
-| **Native multilingual composition** | ⚠️ Partial — Translation only | Translated Tamil or Arabic loses the cultural voice and nuance | **✓ IBM Granite** composes natively in Tamil, Hindi, Arabic, Mandarin, English, Spanish, French, Indonesian. |
-| **Cultural & historical fact verification** | ❌ No fact checking | A story about Diwali or WW2 can teach children wrong facts | **✓ FactCheckAgent** verifies every cultural and historical story; triggers automatic regeneration with corrections. |
-| **Child safety guardrails** | ❌ No child-specific filtering | Raw AI output is unguarded — unsafe content can reach children | **✓ SafetyAgent** audits input AND every generated page; auto-retries in strict mode if flagged. |
-| **Built-in educational learning layer** | ❌ Story ends at the last page | No comprehension reinforcement — knowledge doesn't stick | **✓ Auto-generated vocabulary flashcards** (with audio pronunciation) + 3-question comprehension quiz. |
-| **Immersive reading experience** | ⚠️ Partial — Basic PDF or scroll view | No book-like, engaging reading experience for children | **✓ Animated flipbook reader** with narration, dark mode, zoom, and bookmarks. |
+| **User Identity & Safety Auth** | ⚠️ Generic or non-existent child safety controls | Unauthenticated tools expose children to unsafe content & unmonitored sessions | **✓ Secure Gmail Authentication** — Google OAuth login protects user profiles, attributes story ownership, & enforces safety bounds. |
+| **Generational knowledge input** | ❌ No concept of family memory or cultural heritage input | Parents & grandparents cannot easily turn personal memories into a child's book | **✓ Domain Mode** — Family Memory, Cultural Heritage, & Historical guided wizards requiring zero writing skills. |
+| **Education through story** | ❌ No structured subject-to-story mapping | Teachers cannot convert complex curriculum topics into an interactive personalized story | **✓ Custom Build Mode** — Configurable hero, incident, lesson, moral + auto-generated quiz & vocabulary per story. |
+| **Age-calibrated output** | ⚠️ Partial — Generic text with no age structure | Stories for a 4-year-old read the exact same as stories for a 12-year-old | **✓ NarrativeAgent** calibrates vocabulary, sentence complexity, & page count by age (`3-5`, `6-8`, `9-12`). |
+| **Native multilingual composition** | ⚠️ Partial — Simple machine translation | Translated languages lose cultural voice, idioms, and natural tone | **✓ IBM Granite** composes natively in Tamil, Hindi, Arabic, Mandarin, English, Spanish, French, Indonesian. |
+| **Cultural & historical fact verification** | ❌ No fact checking mechanism | Stories about historical events or heritage can teach inaccurate details | **✓ FactCheckAgent** verifies cultural & historical accuracy, auto-correcting narrative errors. |
+| **Child safety guardrails** | ❌ No child-specific filtering | Raw LLM output is unguarded against sensitive themes | **✓ Dual Safety Architecture** — Gmail Auth access control + `SafetyAgent` pre/post-audit with strict retries. |
+| **Built-in educational learning layer** | ❌ Story ends at the final page | No comprehension reinforcement or active learning tools | **✓ Auto-generated vocabulary flashcards** (with audio pronunciation) + 3-question comprehension quiz. |
+| **Immersive reading experience** | ⚠️ Basic PDF or scrolling view | No book-like interactive experience to engage young readers | **✓ Animated flipbook reader** with narration, dark mode, zoom, audio, and PDF exports. |
 
 ---
 
@@ -148,14 +163,16 @@ flowchart TD
 ```mermaid
 sequenceDiagram
     autonumber
-    actor Client as 🌐 Next.js Frontend App
+    actor User as 👤 User (Gmail Authenticated)
+    participant Client as 🌐 Next.js Frontend App
     participant Gateway as ⚡ FastAPI Backend (main.py)
     participant Orchestrator as 👑 Root Orchestrator Agent
     participant IBM as 🤖 IBM WatsonX (Granite LLM)
     participant ImageGen as 🖼️ Image Gen Engine (Pollinations/Flux)
     participant DB as 🍃 MongoDB Atlas
 
-    Client->>Gateway: POST /generate-story (StoryRequest JSON)
+    User->>Client: Login via Gmail (Google OAuth)
+    Client->>Gateway: POST /generate-story (StoryRequest + Auth Token)
     Gateway->>Orchestrator: RootOrchestratorAgent.run(req)
     Orchestrator->>IBM: Prompt: Generate narrative, quiz, vocab & scene prompt
     IBM-->>Orchestrator: Multi-Agent Story JSON
@@ -167,8 +184,8 @@ sequenceDiagram
     ImageGen-->>Gateway: Saved Image Path (/images/story_id/cover.jpg)
     Gateway-->>Client: 200 OK ({ imageUrl: "/images/story_id/cover.jpg" })
 
-    Client->>Gateway: POST /api/stories (SavedStory JSON)
-    Gateway->>DB: save_story(story)
+    Client->>Gateway: POST /api/stories (SavedStory JSON + Gmail User ID)
+    Gateway->>DB: save_story(story, userId)
     DB-->>Gateway: Success Confirmation
     Gateway-->>Client: 201 Created ({ status: "success", storyId })
 ```
@@ -177,6 +194,7 @@ sequenceDiagram
 
 ## ⚙️ Tech Stack & Architecture
 
+- **Authentication**: Gmail Authentication (Google OAuth 2.0 / NextAuth) for identity protection & profile story saving.
 - **Frontend**: Next.js 16 (App Router, Turbopack, TailwindCSS, Framer Motion, Lucide Icons, `@react-pdf/renderer`).
 - **Backend**: Python 3.12, FastAPI, Uvicorn, PyMongo, Pydantic.
 - **AI Core**: IBM WatsonX Foundation Models (`ibm/granite-4-h-small` / `ibm_watsonx_ai` SDK).
@@ -192,6 +210,7 @@ sequenceDiagram
 - Node.js 18+ & npm
 - IBM WatsonX API Key & Project ID
 - MongoDB Atlas Connection URI
+- Google OAuth Client ID & Secret (for Gmail Authentication)
 
 ### 1. Backend Setup
 ```bash
@@ -212,6 +231,8 @@ WATSONX_PROJECT_ID=your_project_id
 WATSONX_URL=https://us-south.ml.cloud.ibm.com
 WATSONX_MODEL_ID=ibm/granite-4-h-small
 MONGODB_URI=mongodb+srv://user:pass@cluster.mongodb.net/?appName=StorySprout
+GOOGLE_CLIENT_ID=your_google_client_id
+GOOGLE_CLIENT_SECRET=your_google_client_secret
 ```
 
 Start the FastAPI backend server:
