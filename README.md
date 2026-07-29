@@ -106,7 +106,7 @@ All story generation is orchestrated by the `RootOrchestratorAgent` ([backend/ag
 
 ```mermaid
 flowchart TD
-    User["👤 User (Authenticated via Gmail Auth)"] -->|"Verified Bearer Token / Session"| Gateway["⚡ FastAPI Backend Gateway (/generate-story)"]
+    User["  User (Authenticated via Gmail Auth)"] -->|"Verified Bearer Token / Session"| Gateway["  FastAPI Backend Gateway (/generate-story)"]
     Gateway --> Orchestrator["  Root Orchestrator Agent"]
 
     subgraph SequentialAgents["Core Sequential Sub-Agents"]
