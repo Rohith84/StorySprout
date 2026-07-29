@@ -107,30 +107,30 @@ All story generation is orchestrated by the `RootOrchestratorAgent` ([backend/ag
 ```mermaid
 flowchart TD
     User["👤 User (Authenticated via Gmail Auth)"] -->|"Verified Bearer Token / Session"| Gateway["⚡ FastAPI Backend Gateway (/generate-story)"]
-    Gateway --> Orchestrator["👑 Root Orchestrator Agent"]
+    Gateway --> Orchestrator["  Root Orchestrator Agent"]
 
     subgraph SequentialAgents["Core Sequential Sub-Agents"]
-        Orchestrator -->|"1. Sanitize & Audit"| Safety["🛡️ Safety Agent (IBM Granite + Guardrails)"]
-        Orchestrator -->|"2. Generate Narrative"| Storyteller["✍️ Master Storyteller Agent (ibm/granite-4-h-small)"]
-        Orchestrator -->|"3. Fact Check"| FactCheck["🔍 Fact Check Agent (ibm/granite-4-h-small)"]
+        Orchestrator -->|"1. Sanitize & Audit"| Safety["  Safety Agent (IBM Granite + Guardrails)"]
+        Orchestrator -->|"2. Generate Narrative"| Storyteller["  Master Storyteller Agent (ibm/granite-4-h-small)"]
+        Orchestrator -->|"3. Fact Check"| FactCheck["  Fact Check Agent (ibm/granite-4-h-small)"]
     end
 
-    subgraph ParallelAgents["⚡ Parallel Sub-Agent Pool (Concurrent Threads)"]
-        Orchestrator -->|"Parallel Call"| Pedagogy["📖 Pedagogy Agent (ibm/granite-4-h-small)<br/>Extracts 4 Vocab Words & Definitions"]
-        Orchestrator -->|"Parallel Call"| Quiz["🧩 Quiz Agent (ibm/granite-4-h-small)<br/>Builds 3 Comprehension Questions"]
-        Orchestrator -->|"Parallel Call"| Visual["🎨 Visual Director Agent (ibm/granite-4-h-small)<br/>Crafts Illustration Scene Prompts"]
+    subgraph ParallelAgents["  Parallel Sub-Agent Pool (Concurrent Threads)"]
+        Orchestrator -->|"Parallel Call"| Pedagogy["  Pedagogy Agent (ibm/granite-4-h-small)<br/>Extracts 4 Vocab Words & Definitions"]
+        Orchestrator -->|"Parallel Call"| Quiz["  Quiz Agent (ibm/granite-4-h-small)<br/>Builds 3 Comprehension Questions"]
+        Orchestrator -->|"Parallel Call"| Visual["  Visual Director Agent (ibm/granite-4-h-small)<br/>Crafts Illustration Scene Prompts"]
     end
 
-    Safety --> FinalJSON["📦 Assembled Final Story JSON"]
+    Safety --> FinalJSON["  Assembled Final Story JSON"]
     Storyteller --> FinalJSON
     FactCheck --> FinalJSON
     Pedagogy --> FinalJSON
     Quiz --> FinalJSON
     Visual --> FinalJSON
 
-    FinalJSON --> ImageGen["🖼️ Image Gen Engine (Pollinations.ai / FLUX Model)"]
-    FinalJSON --> PDFBook["📄 Printable PDF Book Exporter (@react-pdf/renderer)"]
-    FinalJSON --> Mongo["🍃 MongoDB Database (Atlas / User Vault)"]
+    FinalJSON --> ImageGen["  Image Gen Engine (Pollinations.ai / FLUX Model)"]
+    FinalJSON --> PDFBook["  Printable PDF Book Exporter (@react-pdf/renderer)"]
+    FinalJSON --> Mongo["  MongoDB Database (Atlas / User Vault)"]
 ```
 
 | Agent | File Location | Function | Educational Role | Execution Phase |
@@ -165,13 +165,13 @@ flowchart TD
 ```mermaid
 sequenceDiagram
     autonumber
-    actor User as 👤 User (Gmail Authenticated)
-    participant Client as 🌐 Next.js Frontend App
-    participant Gateway as ⚡ FastAPI Backend (main.py)
-    participant Orchestrator as 👑 Root Orchestrator Agent
-    participant IBM as 🤖 IBM WatsonX (Granite LLM)
-    participant ImageGen as 🖼️ Image Gen Engine (Pollinations/Flux)
-    participant DB as 🍃 MongoDB Atlas
+    actor User as   User (Gmail Authenticated)
+    participant Client as   Next.js Frontend App
+    participant Gateway as   FastAPI Backend (main.py)
+    participant Orchestrator as   Root Orchestrator Agent
+    participant IBM as   IBM WatsonX (Granite LLM)
+    participant ImageGen as   Image Gen Engine (Pollinations/Flux)
+    participant DB as   MongoDB Atlas
 
     User->>Client: Login via Gmail (Google OAuth)
     Client->>Gateway: POST /generate-story (StoryRequest + Auth Token)
