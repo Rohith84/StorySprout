@@ -85,9 +85,9 @@ StorySprout provides three guided creation wizards, each tailored to a specific 
 
 ```mermaid
 graph TD
-    A[Create Mode] --> B[👨‍👩‍👧 Family Memory]
-    A --> C[🌍 Cultural & Heritage]
-    A --> D[📜 Historical]
+    A[Create Mode] --> B[  Family Memory]
+    A --> C[  Cultural & Heritage]
+    A --> D[  Historical]
 
     B --> B1["Personal & Emotional<br/>Happy family moments, camping trips, childhood milestones."]
     C --> C1["Roots & Identity<br/>Traditions, festivals, folk tales, food origins."]
