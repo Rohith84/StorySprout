@@ -44,7 +44,7 @@ StorySprout is designed for anyone who holds knowledge or memories and wants to 
 
 ```
 ┌───────────────────────────┐      ┌───────────────────────────┐      ┌───────────────────────────┐      ┌───────────────────────────┐
-│       👨‍👩‍👧 THE PARENT       │      │     👵 THE GRANDPARENT    │      │       🧬 THE TEACHER      │      │     🌍 MENTORS & GUARDIANS │
+│        THE PARENT       │        │      THE GRANDPARENT      │      │          THE TEACHER      │      │       MENTORS & GUARDIANS │
 │                           │      │                           │      │                           │      │                           │
 │ "I want my daughter to    │      │ "I want my grandchild to  │      │ "I want my Year 4 class to│      │ "I want young kids to     │
 │ remember our family       │      │ know the happy stories of │      │ understand how the        │      │ understand traditional    │
@@ -52,7 +52,7 @@ StorySprout is designed for anyone who holds knowledge or memories and wants to 
 └─────────────┬─────────────┘      └─────────────┬─────────────┘      └─────────────┬─────────────┘      └─────────────┬─────────────┘
               │                                  │                                  │                                  │
               ▼                                  ▼                                  ▼                                  ▼
- 🏕️ Happy Family Memory             🌾 Heritage & Tradition                🔬 Educational Custom Story            📜 Historical & Cultural
+   Happy Family Memory               Heritage & Tradition                   Educational Custom Story               Historical & Cultural
  • Personalized family story        • Native language option               • Red Blood Cell Hero                  • Child's point of view
  • Age-calibrated (6-8 yrs)         • Age-calibrated (3-5 yrs)             • Vocab: "artery", "oxygen"            • FactCheckAgent verified
  • Vocab: "constellation"           • Vocab: "harmony", "gratitude"        • Comprehension quiz at end            • Lived experience history
@@ -61,7 +61,7 @@ StorySprout is designed for anyone who holds knowledge or memories and wants to 
 ### How Knowledge Travels — From Holder to Child
 
 ```
-[🔐 Gmail Auth Login] ──► [👨‍👩‍👧‍👦 Knowledge Holder] ──► [📋 Domain Wizard] ──► [🤖 6-Agent Pipeline] ──► [📖 Child Reads & Learns] ──► [🌱 Knowledge Planted]
+[  Gmail Auth Login] ──► [  Knowledge Holder] ──► [  Domain Wizard] ──► [  6-Agent Pipeline] ──► [  Child Reads & Learns] ──► [  Knowledge Planted]
 (Secures profile &        (Parents, Teachers,       (Guided questions       (IBM Granite writes,       (Flipbook, audio, vocab,     (Memory & lesson
  user story privacy)       Grandparents, Mentors)    capture memory/lesson)  fact-checks, illustrates)  quizzes & PDF book)         understood forever)
 ```
