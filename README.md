@@ -277,8 +277,9 @@ Special thanks to all the team members and contributors building StorySprout:
 | Contributor | GitHub Profile |
 | :--- | :--- |
 | **Rohith M** | [@Rohith84](https://github.com/Rohith84) |
-| **Karthika Ramasamy** | [@karthika2094](https://github.com/karthika2094) |
-| **ka234388** | [@ka234388](https://github.com/ka234388) |
+| **Karthika Ramasamy** | [@ka234388](https://github.com/ka234388) |
+| **Maveen Kumar** | [@naveenkumarj2004](https://github.com/naveenkumarj2004) |
+| **Danar** | [@DanarGdg](https://github.com/DanarGdg) |
 
 Want to contribute? Check out our repository guidelines and feel free to submit a pull request!
 
