@@ -263,3 +263,22 @@ Open `http://localhost:3000` in your browser.
 
 Built for the IBM AI Challenge. Powered by IBM watsonx and Granite models.
 Distributed under the MIT License.
+
+---
+
+## 👥 Contributors
+
+Special thanks to all the team members and contributors building StorySprout:
+
+<a href="https://github.com/Rohith84/StorySprout/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=Rohith84/StorySprout" alt="StorySprout Contributors" />
+</a>
+
+| Contributor | GitHub Profile |
+| :--- | :--- |
+| **Rohith M** | [@Rohith84](https://github.com/Rohith84) |
+| **Karthika Ramasamy** | [@karthika2094](https://github.com/karthika2094) |
+| **ka234388** | [@ka234388](https://github.com/ka234388) |
+
+Want to contribute? Check out our repository guidelines and feel free to submit a pull request!
+
