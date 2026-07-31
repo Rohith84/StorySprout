@@ -274,12 +274,12 @@ Special thanks to all the team members and contributors building StorySprout:
   <img src="https://contrib.rocks/image?repo=Rohith84/StorySprout" alt="StorySprout Contributors" />
 </a>
 
-| Contributor | GitHub Profile |
-| :--- | :--- |
-| **Rohith M** | [@Rohith84](https://github.com/Rohith84) |
-| **Karthika Ramasamy** | [@ka234388](https://github.com/ka234388) |
-| **Naveen Kumar** | [@naveenkumarj2004](https://github.com/naveenkumarj2004) |
-| **Danar** | [@DanarGdg](https://github.com/DanarGdg) |
+| Contributor | Details | GitHub Profile |
+| :--- | :--- | :--- |
+| **Rohith M** |  | [@Rohith84](https://github.com/Rohith84) |
+| **Karthika Ramasamy** |  | [@ka234388](https://github.com/ka234388) |
+| **Naveen Kumar Jeevanantham** | M.S. Cybersecurity and Trusted Systems, Purdue University, West Lafayette, United States of America | [@naveenkumarj2004](https://github.com/naveenkumarj2004) |
+| **Danar** |  | [@DanarGdg](https://github.com/DanarGdg) |
 
 Want to contribute? Check out our repository guidelines and feel free to submit a pull request!
 
