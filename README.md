@@ -276,9 +276,7 @@ Special thanks to all the team members and contributors building StorySprout:
 
 | Contributor | Details | GitHub Profile |
 | :--- | :--- | :--- |
-| **Rohith M** |  | [@Rohith84](https://github.com/Rohith84) | Rohit M
-B.Tech Artificial Intelligence and Data Science 
-Dr. N.G.P Institute of Technology, Coimbatore, India
+| **Rohith M** |  | [@Rohith84](https://github.com/Rohith84) | 
 | **Karthika Ramasamy** |  | [@ka234388](https://github.com/ka234388) |
 | **Naveen Kumar Jeevanantham** | M.S. Cybersecurity and Trusted Systems, Purdue University, West Lafayette, United States of America | [@naveenkumarj2004](https://github.com/naveenkumarj2004) |
 | **Danar** |  | [@DanarGdg](https://github.com/DanarGdg) |
